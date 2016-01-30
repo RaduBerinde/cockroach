@@ -211,11 +211,6 @@ func (p *planner) getAliasedTableLease(n parser.TableExpr) (*TableDescriptor, *r
 	if pErr != nil {
 		return nil, pErr
 	}
-	if ate.As != "" {
-		desc.Alias = string(ate.As)
-	} else {
-		desc.Alias = desc.Name
-	}
 	return desc, nil
 }
 
