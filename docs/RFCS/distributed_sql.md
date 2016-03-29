@@ -6,11 +6,17 @@
 - Cockroach Issue: (one or more # from the issue tracker)
 
 # Table of Contents
+
+  * [Table of Contents](#table-of-contents)
   * [Summary](#summary)
     * [Vocabulary](#vocabulary)
   * [Motivation](#motivation)
   * [Detailed design](#detailed-design)
-  * [Drawbacks](#drawbacks)
+    * [Overview](#overview)
+    * [Logical plan](#logical-plan)
+    * [Physical plan](#physical-plan)
+  * [KV Layer requirements](#kv-layer-requirements)
+  * [Implementation strategy](#implementation-strategy)
   * [Alternatives](#alternatives)
     * [More logic in the KV layer](#more-logic-in-the-kv-layer)
       * [Complexity](#complexity)
@@ -175,29 +181,29 @@ execute this query. Note that this is not a language we are introducing, it is
 for conceptualizing.
 
 ```
-AGGREGATOR values[Cid:INT] SUM OF (Value: DECIMAL)
+AGGREGATOR summer[Cid:INT] SUM OF (Value:DECIMAL)
 
-AGGREGATOR sorted[OrderVal:DECIMAL] COLLECTION OF (CId:INT, Value: DECIMAL)
+AGGREGATOR sorter[OrderVal:DECIMAL] COLLECTION OF (CId:INT, Value:DECIMAL)
 
-PROGRAM1(Oid:INT, CId:INT, Value:DECIMAL, Date:DATE) {
+PROGRAM1(OId:INT, CId:INT, Value:DECIMAL, Date:DATE) {
   if Date > 2015 {
-     EMIT INTO values[CId] Value
-     }
+    EMIT INTO summer[CId] Value
+  }
 }
 
 PROGRAM2(CId:INT, ValueSum:DECIMAL) {
-  EMIT INTO sorted[1 - ValueSum] CId, ValueSum
+  EMIT INTO sorter[1 - ValueSum] CId, ValueSum
 }
 ```
 
-Conceptually, an aggregator is ordered map indexed by a tuple; for each tuple
-there is a corresponding collection of tuples and the aggregator can optionally
-perform a reducing operation on this collection. The `values` aggregators is
-indexed by a single element (`Cid`); it collects `Value` elements and for each
-index these elements are reduced by a sum operation. The `sorted` aggregator is
-a "no-op" aggregator that simply returns the collection of values for each value
-of the `OrderVal`. Because the results of aggregators are always ordered by
-index, this results in sorting the results.
+Conceptually, an aggregator is an ordered map indexed by a tuple; for each tuple
+the aggregator receives a collection of tuples; the aggregator can optionally
+perform an operation on this collection. The `summer` aggregators is indexed by
+a single element (`Cid`); it collects `Value` elements and for each index these
+elements are reduced by a sum operation. The `sorter` aggregator is a "no-op"
+aggregator that simply returns the collection of values for each value of the
+`OrderVal`. Because the results of aggregators are always ordered by index, this
+implicitly results in sorting the input.
 
 These programs and aggregators come together as described by a *logical plan*.
 This is roughly analogous with the plans we have in our current, non-distributed
@@ -206,17 +212,86 @@ distributed.
 
 ![Logical plan](distributed_sql_logical_plan.png?raw=true "Logical Plan")
 
+`TableReader` is a built-in facility that reads KV entries and outputs row
+tuples (very close to what `scanNode` does today).
+
 ## Physical plan
+
+A logical plan is used to instantiate a *physical plan*. At this planning step,
+we take into account where the master of each range is located; we divide the
+`TableScanner` work among the nodes that have data for that table.
+
+It is important to note that correctly dividing the work is not necessary for
+correctness - if a range gets split or moved while we are planning the query it
+will not cause incorrect results. Some key reads might be slower because they
+actually happen remotely, but as long as most of the time, most of the keys are
+read locally this should not be a problem.
+
+Assume that we run the query above on a **Gateway** node and the table has data
+that on two nodes **A** and **B** (i.e. these two nodes are masters for all the
+relevant range). The logical plan above could be instantiated as the following
+physical plan:
+
+![Physical plan](distributed_sql_physical_plan.png?raw=true "Physical Plan")
+
+Each box is a *processor*; we describe each one below:
+ - `TableReader` performs KV Get operations and forms rows; it is programmed to
+   read the spans that belong to the respective node.
+ - Each instance of `PROGRAM1` evaluates the `Date > 2015` expression and
+   conditionally emits a value.
+ - `summer-stage1` is the first stage of the `summer` aggregator; its purpose is
+   to do the aggregation it can do locally and distribute the partial results to
+   the `summer-stage2` processes, such that all values for a certain index
+   (`CId`) reach the same process (by hashing `CId` to one of two "buckets").
+ - `summer-stage2` performs the actual sum and outputs the index (`CId`) and
+   corresponding sum.
+ - `PROGRAM2` emits each `<CId, ValueSum>` pair into the index with the result
+   of the `1 - ValueSum` expression.
+ - `sorter-stage1` sorts the input locally and emits it in sorted order.
+ - `sorter-stage2` merges the two input streams of data to produce the final
+   sorted result.
+
+Note that the second stage of the summer aggregator doesn't need to run on the
+same nodes; for example, an alternate physical plan could use a single stage 2
+processor for `summer`:
+
+![Alternate physical plan](distributed_sql_physical_plan_2.png?raw=true "Alternate physical Plan")
+
+Note that the processors always form a directed acyclic graph.
+
+## Processors
+
+Processors are made up of three components:
+
+![Processor](distributed_sql_processor.png?raw=true "Processor")
+
+1. The *input synchronizer* merges the input streams into a single stream of
+   data. Types:
+   * single-input (pass-through)
+   * unsynchronized: passes data elements from all input streams in whatever
+     order.
+   * ordered: input streams are sorted according to some part of the data; the
+     synchronizer is careful to interleave the streams so that the output is
+     sorted
+
+2. The *data processor* core
+
+3. The *output router* splits the data processor's output to multiple streams;
+   types:
+   * single-output (pass-through)
+   * mirror: every data element is sent to all output streams
+   * hashing: each data element goes to a single output stream, chosen according
+     to a hash function applied on a certain part of the data.
+
+# KV Layer requirements
+
+distributed txn coord (read and writes)
 
 # Implementation strategy
 
-# Drawbacks
-
 # Alternatives
 
-A set of alternative approaches were considered.
-
-
+We outline a set of alternative approaches that were considered.
 
 ## More logic in the KV layer
 
