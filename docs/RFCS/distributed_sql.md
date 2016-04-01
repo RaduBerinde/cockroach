@@ -183,7 +183,7 @@ for conceptualizing.
 ```
 AGGREGATOR summer[Cid:INT] SUM OF (Value:DECIMAL)
 
-AGGREGATOR sorter[OrderVal:DECIMAL] COLLECTION OF (CId:INT, Value:DECIMAL)
+AGGREGATOR ORDERED sorter[OrderVal:DECIMAL] COLLECTION OF (CId:INT, Value:DECIMAL)
 
 PROGRAM1(OId:INT, CId:INT, Value:DECIMAL, Date:DATE) {
   if Date > 2015 {
@@ -196,19 +196,20 @@ PROGRAM2(CId:INT, ValueSum:DECIMAL) {
 }
 ```
 
-Conceptually, an aggregator is an ordered map indexed by a tuple; for each tuple
-the aggregator receives a collection of tuples; the aggregator can optionally
-perform an operation on this collection. The `summer` aggregators is indexed by
-a single element (`Cid`); it collects `Value` elements and for each index these
-elements are reduced by a sum operation. The `sorter` aggregator is a "no-op"
-aggregator that simply returns the collection of values for each value of the
-`OrderVal`. Because the results of aggregators are always ordered by index, this
-implicitly results in sorting the input.
+Conceptually, an aggregator is a map indexed by a tuple; for each tuple the
+aggregator receives a collection of tuples and t can optionally perform an
+operation on this collection. Aggregators can be unordered or ordered - the
+latter output the tuples in the order of the index tuple.  The `summer`
+aggregators is indexed by a single element (`Cid`); it collects `Value` elements
+and for each index these elements are reduced by a sum operation. The `sorter`
+aggregator is a "no-op" aggregator that simply returns the collection of values
+for each value of the `OrderVal`. Because the results of aggregators are always
+ordered by index, this implicitly results in sorting the input.
 
 These programs and aggregators come together as described by a *logical plan*.
-This is roughly analogous with the plans we have in our current, non-distributed
-SQL implementation; the logical plan does not prescribe how the computation is
-distributed.
+The logical plan does not prescribe how the computation is distributed; it is
+roughly analogous with the plans we have in our current, non-distributed SQL
+implementation.
 
 ![Logical plan](distributed_sql_logical_plan.png?raw=true "Logical Plan")
 
@@ -217,15 +218,15 @@ tuples (very close to what `scanNode` does today).
 
 ## Physical plan
 
-A logical plan is used to instantiate a *physical plan*. At this planning step,
-we take into account where the master of each range is located; we divide the
-`TableScanner` work among the nodes that have data for that table.
+The logical plan is used to instantiate the *physical plan*. At this planning
+step, we take into account where the master of each range is located; we divide
+the `TableScanner` work among the nodes that have data for that table.
 
-It is important to note that correctly dividing the work is not necessary for
-correctness - if a range gets split or moved while we are planning the query it
-will not cause incorrect results. Some key reads might be slower because they
-actually happen remotely, but as long as most of the time, most of the keys are
-read locally this should not be a problem.
+It is important to note that correctly distributing the work is not necessary
+for correctness - if a range gets split or moved while we are planning the
+query, it will not cause incorrect results. Some key reads might be slower
+because they actually happen remotely, but as long as *most of the time, most of
+the keys* are read locally this should not be a problem.
 
 Assume that we run the query above on a **Gateway** node and the table has data
 that on two nodes **A** and **B** (i.e. these two nodes are masters for all the
@@ -234,7 +235,7 @@ physical plan:
 
 ![Physical plan](distributed_sql_physical_plan.png?raw=true "Physical Plan")
 
-Each box is a *processor*; we describe each one below:
+Each box is a *processor*:
  - `TableReader` performs KV Get operations and forms rows; it is programmed to
    read the spans that belong to the respective node.
  - Each instance of `PROGRAM1` evaluates the `Date > 2015` expression and
@@ -268,26 +269,28 @@ Processors are made up of three components:
 1. The *input synchronizer* merges the input streams into a single stream of
    data. Types:
    * single-input (pass-through)
-   * unsynchronized: passes data elements from all input streams in whatever
-     order.
+   * unsynchronized: passes data elements from all input streams, arbitrarily
+     interleaved.
    * ordered: input streams are sorted according to some part of the data; the
      synchronizer is careful to interleave the streams so that the output is
-     sorted
+     sorted.
 
-2. The *data processor* core
+2. The *data processor* core implements the data transformation or aggregation
+   logic.
 
 3. The *output router* splits the data processor's output to multiple streams;
    types:
    * single-output (pass-through)
    * mirror: every data element is sent to all output streams
    * hashing: each data element goes to a single output stream, chosen according
-     to a hash function applied on a certain part of the data.
+     to a hash function applied on certain elements of the data tuples.
+
+# Implementation strategy
 
 # KV Layer requirements
 
 distributed txn coord (read and writes)
-
-# Implementation strategy
+figuring out how ranges are distributed
 
 # Alternatives
 
