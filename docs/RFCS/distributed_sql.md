@@ -41,7 +41,7 @@ discussion and not a complete detailed design.
 - KV - the KV system in cockroach, defined by its key-value, range and batch API
 - k/v - a key-value pair, usually used to refer to an entry in KV
 - Client / Client-side - the SQL client
-- Ingress node / Ingress-side - the cluster node to which the client SQL query is delivered first
+- SQL gateway / Gateway-side - the cluster node to which the client SQL query is delivered first
 - Leader node / Leader-side - the cluster node which resolves a KV operation
 - Remote node / Remote-side - the cluster node(s) where the data actually lies
 
@@ -55,7 +55,7 @@ The desired improvements are listed below.
 
   When querying for a set of rows that match a filtering expression, we
   currently query all the keys in certain ranges and process the filters after
-  receiving the data on the ingress node over the network. Instead, we want the
+  receiving the data on the gateway node over the network. Instead, we want the
   filtering expression to be processed by the leader or remote node, saving on
   network traffic and related processing.
 
@@ -67,7 +67,7 @@ The desired improvements are listed below.
 2. Remote-side updates and deletes
 
   For statements like `UPDATE .. WHERE` and `DELETE .. WHERE` we currently
-  perform a query, receive results at the ingress over the network, and then
+  perform a query, receive results at the gateway over the network, and then
   perform the update or deletion there.  This involves too many round-trips;
   instead, we want the query and updates to happen on the node which has access
   to the data.
@@ -219,7 +219,7 @@ tuples (very close to what `scanNode` does today).
 ## Physical plan
 
 The logical plan is used to instantiate the *physical plan*. At this planning
-step, we take into account where the master of each range is located; we divide
+step, we take into account where the leader of each range is located; we divide
 the `TableScanner` work among the nodes that have data for that table.
 
 It is important to note that correctly distributing the work is not necessary
@@ -229,7 +229,7 @@ because they actually happen remotely, but as long as *most of the time, most of
 the keys* are read locally this should not be a problem.
 
 Assume that we run the query above on a **Gateway** node and the table has data
-that on two nodes **A** and **B** (i.e. these two nodes are masters for all the
+that on two nodes **A** and **B** (i.e. these two nodes are leaders for all the
 relevant range). The logical plan above could be instantiated as the following
 physical plan:
 
