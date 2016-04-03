@@ -120,7 +120,14 @@ func verifyKeys(start, end roachpb.Key, checkEndKey bool) error {
 		return util.Errorf("end key %q must be less than or equal to KeyMax", end)
 	}
 	{
-		sAddr, eAddr := keys.Addr(start), keys.Addr(end)
+		sAddr, err := keys.Addr(start)
+		if err != nil {
+			return err
+		}
+		eAddr, err := keys.Addr(end)
+		if err != nil {
+			return err
+		}
 		if !sAddr.Less(eAddr) {
 			return util.Errorf("end key %q must be greater than start %q", end, start)
 		}
@@ -350,10 +357,6 @@ type StoreContext struct {
 	// ConsistencyCheckInterval is the default time period in between consecutive
 	// consistency checks on a range.
 	ConsistencyCheckInterval time.Duration
-
-	// TimeUntilStoreDead is the time after which if there is no new gossiped
-	// information about a store, it can be considered dead.
-	TimeUntilStoreDead time.Duration
 
 	// AllocatorOptions configures how the store will attempt to rebalance its
 	// replicas to other stores.
@@ -625,11 +628,11 @@ func (s *Store) String() string {
 	return fmt.Sprintf("store=%d:%d (%s)", s.Ident.NodeID, s.Ident.StoreID, s.engine)
 }
 
-// Context returns a base context to pass along with commands being executed,
-// derived from the supplied context (which is allowed to be nil).
-func (s *Store) Context(ctx context.Context) context.Context {
+// context returns a base context to pass along with commands being executed,
+// derived from the supplied context (which is not allowed to be nil).
+func (s *Store) context(ctx context.Context) context.Context {
 	if ctx == nil {
-		ctx = context.Background()
+		panic("ctx cannot be nil")
 	}
 	return log.Add(ctx,
 		log.NodeID, s.Ident.NodeID,
@@ -639,11 +642,6 @@ func (s *Store) Context(ctx context.Context) context.Context {
 // IsStarted returns true if the Store has been started.
 func (s *Store) IsStarted() bool {
 	return atomic.LoadInt32(&s.started) == 1
-}
-
-// StartedAt returns the timestamp at which the store was most recently started.
-func (s *Store) StartedAt() int64 {
-	return s.startedAt
 }
 
 // IterateRangeDescriptors calls the provided function with each descriptor
@@ -836,7 +834,7 @@ func (s *Store) WaitForInit() {
 // whether the store has a first range or config replica and asks those ranges
 // to gossip accordingly.
 func (s *Store) startGossip() {
-	ctx := s.Context(nil)
+	ctx := s.context(context.TODO())
 	// Periodic updates run in a goroutine and signal a WaitGroup upon completion
 	// of their first iteration.
 	s.initComplete.Add(2)
@@ -921,7 +919,7 @@ func (s *Store) maybeGossipSystemConfig() error {
 	// gossip. If an unexpected error occurs (i.e. nobody else seems to
 	// have an active lease but we still failed to obtain it), return
 	// that error.
-	_, pErr := rng.getLeaseForGossip(s.Context(nil))
+	_, pErr := rng.getLeaseForGossip(s.context(context.TODO()))
 	return pErr.GoError()
 }
 
@@ -941,7 +939,7 @@ func (s *Store) systemGossipUpdate(cfg config.SystemConfig) {
 
 // GossipStore broadcasts the store on the gossip network.
 func (s *Store) GossipStore() {
-	ctx := s.Context(nil)
+	ctx := s.context(context.TODO())
 
 	storeDesc, err := s.Descriptor()
 	if err != nil {
@@ -1103,7 +1101,11 @@ func (s *Store) BootstrapRange(initialValues []roachpb.KeyValue) error {
 		return err
 	}
 	// Range addressing for meta1.
-	meta1Key := keys.RangeMetaKey(keys.Addr(meta2Key))
+	meta2KeyAddr, err := keys.Addr(meta2Key)
+	if err != nil {
+		return err
+	}
+	meta1Key := keys.RangeMetaKey(meta2KeyAddr)
 	if err := engine.MVCCPutProto(batch, ms, meta1Key, now, nil, desc); err != nil {
 		return err
 	}
@@ -1501,7 +1503,7 @@ func (s *Store) ReplicaCount() int {
 // timestamp (for instance due to the timestamp cache), the response will have
 // a transaction set which should be used to update the client transaction.
 func (s *Store) Send(ctx context.Context, ba roachpb.BatchRequest) (br *roachpb.BatchResponse, pErr *roachpb.Error) {
-	ctx = s.Context(ctx)
+	ctx = s.context(ctx)
 
 	for _, union := range ba.Requests {
 		arg := union.GetInner()
@@ -1554,13 +1556,13 @@ func (s *Store) Send(ctx context.Context, ba roachpb.BatchRequest) (br *roachpb.
 				pErr.OriginNode = ba.Replica.NodeID
 				txn := pErr.GetTxn()
 				if txn == nil {
-					txn = &roachpb.Transaction{}
+					txn = ba.Txn
 				}
 				txn.UpdateObservedTimestamp(ba.Replica.NodeID, now)
 				pErr.SetTxn(txn)
 			} else {
 				if br.Txn == nil {
-					br.Txn = &roachpb.Transaction{}
+					br.Txn = ba.Txn
 				}
 				br.Txn.UpdateObservedTimestamp(ba.Replica.NodeID, now)
 				// Update our clock with the outgoing response txn timestamp.

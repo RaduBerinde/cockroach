@@ -140,13 +140,6 @@ func (ms MVCCStats) GCBytes() int64 {
 	return ms.KeyBytes + ms.ValBytes - ms.LiveBytes
 }
 
-// Delta returns the difference between two MVCCStats structures.
-func (ms MVCCStats) Delta(oms MVCCStats) MVCCStats {
-	result := ms // for clarity
-	result.Subtract(oms)
-	return result
-}
-
 // AgeTo encapsulates the complexity of computing the increment in age
 // quantities contained in MVCCStats. Two MVCCStats structs only add and
 // subtract meaningfully if their LastUpdateNanos matches, so aging them to
@@ -611,7 +604,6 @@ func MVCCGetAsTxn(
 ) (*roachpb.Value, []roachpb.Intent, error) {
 	txn := &roachpb.Transaction{
 		TxnMeta:       txnMeta,
-		Priority:      roachpb.MakePriority(roachpb.MinUserPriority),
 		Status:        roachpb.PENDING,
 		Writing:       true,
 		OrigTimestamp: txnMeta.Timestamp,
@@ -942,6 +934,9 @@ func mvccPutInternal(
 	}
 	// Handle inline put.
 	if putIsInline {
+		if txn != nil {
+			return util.Errorf("%q: inline writes not allowed within transactions", metaKey)
+		}
 		var metaKeySize, metaValSize int64
 		if value, err = maybeGetValue(ok, timestamp); err != nil {
 			return err
@@ -1870,7 +1865,7 @@ func MVCCFindSplitKey(
 	debugFn func(msg string, args ...interface{}),
 ) (roachpb.Key, error) {
 	if key.Less(roachpb.RKey(keys.LocalMax)) {
-		key = keys.Addr(keys.LocalMax)
+		key = roachpb.RKey(keys.LocalMax)
 	}
 
 	logf := func(msg string, args ...interface{}) {

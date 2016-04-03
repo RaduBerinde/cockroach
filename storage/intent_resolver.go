@@ -155,7 +155,9 @@ func (ir *intentResolver) maybePushTransactions(ctx context.Context, intents []r
 	// txn with only the priority set.
 	if pusherTxn == nil {
 		pusherTxn = &roachpb.Transaction{
-			Priority: roachpb.MakePriority(h.UserPriority),
+			TxnMeta: roachpb.TxnMeta{
+				Priority: roachpb.MakePriority(h.UserPriority),
+			},
 		}
 	}
 
@@ -249,7 +251,7 @@ func (ir *intentResolver) processIntentsAsync(r *Replica, intents []intentsWithA
 		return
 	}
 	now := r.store.Clock().Now()
-	ctx := r.context()
+	ctx := r.context(context.TODO())
 	stopper := r.store.Stopper()
 
 	for _, item := range intents {

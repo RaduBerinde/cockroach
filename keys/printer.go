@@ -80,7 +80,7 @@ var (
 					if len(unq) == 0 {
 						return "", Meta1Prefix
 					}
-					return "", RangeMetaKey(Addr(RangeMetaKey(Addr(
+					return "", RangeMetaKey(mustAddr(RangeMetaKey(mustAddr(
 						roachpb.Key(unq)))))
 				},
 			}},
@@ -96,15 +96,11 @@ var (
 					if len(unq) == 0 {
 						return "", Meta2Prefix
 					}
-					return "", RangeMetaKey(Addr(roachpb.Key(unq)))
+					return "", RangeMetaKey(mustAddr(roachpb.Key(unq)))
 				},
 			}},
 		},
 		{name: "/System", start: SystemPrefix, end: SystemMax, entries: []dictEntry{
-			{name: "/StatusStore", prefix: StatusStorePrefix,
-				ppFunc: decodeKeyPrint,
-				psFunc: parseUnsupported,
-			},
 			{name: "/StatusNode", prefix: StatusNodePrefix,
 				ppFunc: decodeKeyPrint,
 				psFunc: parseUnsupported,
@@ -379,11 +375,11 @@ func sequenceCacheKeyParse(rangeID roachpb.RangeID, input string) (string, roach
 	var err error
 	input = mustShiftSlash(input)
 	_, input = mustShift(input[:len(input)-1])
+	if len(input) != len(uuid.EmptyUUID.String()) {
+		panic(&errUglifyUnsupported{errors.New("epoch or sequence not supported")})
+	}
 	id, err := uuid.FromString(input)
-	if err != nil || len(input) != uuid.EmptyUUID.Size() {
-		if err == nil {
-			err = errors.New("epoch/sequence not supported")
-		}
+	if err != nil {
 		panic(&errUglifyUnsupported{err})
 	}
 	return "", SequenceCacheKeyPrefix(rangeID, id)
@@ -485,7 +481,6 @@ func prettyPrintInternal(key roachpb.Key) (string, bool) {
 // /Meta1/[key]                                   "\x02"+[key]
 // /Meta2/[key]                                   "\x03"+[key]
 // /System/...                                    "\x04"
-//		/StatusStore/[key]                          "\x04status-store-"+[key]
 //		/StatusNode/[key]                           "\x04status-node-"+[key]
 // /System/Max                                    "\x05"
 //

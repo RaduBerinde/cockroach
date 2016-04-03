@@ -21,6 +21,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -96,9 +97,34 @@ uninitialized, specify the --join flag to point to any healthy node
 func initCacheSize() {
 	if !cacheSize.isSet {
 		if size, err := server.GetTotalMemory(); err == nil {
-			cliContext.CacheSize = size / 2
+			// Default the cache size to 1/4 of total memory. A larger cache size
+			// doesn't necessarily improve performance as this is memory that is
+			// dedicated to uncompressed blocks in RocksDB. A larger value here will
+			// compete with the OS buffer cache which holds compressed blocks.
+			cliContext.CacheSize = size / 4
 		}
 	}
+}
+
+func initInsecure() error {
+	if !cliContext.Insecure || insecure.isSet {
+		return nil
+	}
+	// The --insecure flag was not specified on the command line, verify that the
+	// host refers to a loopback address.
+	if connHost != "" {
+		addr, err := net.ResolveIPAddr("ip", connHost)
+		if err != nil {
+			return err
+		}
+		if !addr.IP.IsLoopback() {
+			return fmt.Errorf("specify --insecure to listen on external address %s", connHost)
+		}
+	} else {
+		cliContext.Addr = net.JoinHostPort("localhost", connPort)
+		cliContext.HTTPAddr = net.JoinHostPort("localhost", httpPort)
+	}
+	return nil
 }
 
 // runStart starts the cockroach node using --store as the list of
@@ -107,6 +133,9 @@ func initCacheSize() {
 // cluster, if this is its first time connecting.
 func runStart(_ *cobra.Command, _ []string) error {
 	initCacheSize()
+	if err := initInsecure(); err != nil {
+		return err
+	}
 
 	// Default the log directory to the the "logs" subdirectory of the first
 	// non-memory store. We only do this for the "start" command which is why
@@ -146,14 +175,13 @@ func runStart(_ *cobra.Command, _ []string) error {
 
 	log.Info("starting cockroach node")
 	s, err := server.NewServer(&cliContext.Context, stopper)
+	if err != nil {
+		return fmt.Errorf("failed to start Cockroach server: %s", err)
+	}
 
 	// We don't do this in NewServer since we don't want it in tests.
 	if err := s.SetupReportingURLs(); err != nil {
 		return err
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to start Cockroach server: %s", err)
 	}
 
 	if err := s.Start(); err != nil {

@@ -108,16 +108,6 @@ func (rk RKey) String() string {
 // messages which refer to Cockroach keys.
 type Key []byte
 
-// MakeKey makes a new key which is the concatenation of the
-// given inputs, in order.
-func MakeKey(keys ...[]byte) []byte {
-	byteSlices := make([][]byte, len(keys))
-	for i, k := range keys {
-		byteSlices[i] = []byte(k)
-	}
-	return bytes.Join(byteSlices, nil)
-}
-
 // BytesNext returns the next possible byte by appending an \x00.
 func BytesNext(b []byte) []byte {
 	// TODO(spencer): Do we need to enforce KeyMaxLength here?
@@ -607,9 +597,9 @@ func NewTransaction(name string, baseKey Key, userPriority UserPriority,
 			ID:        uuid.NewV4(),
 			Isolation: isolation,
 			Timestamp: now,
+			Priority:  priority,
 		},
 		Name:          name,
-		Priority:      priority,
 		OrigTimestamp: now,
 		MaxTimestamp:  max,
 		Sequence:      1,

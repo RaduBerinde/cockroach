@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/cockroachdb/cockroach/client"
 	"github.com/cockroachdb/cockroach/keys"
 	"github.com/cockroachdb/cockroach/roachpb"
@@ -220,7 +222,7 @@ func TestGCQueueProcess(t *testing.T) {
 				txn.OrigTimestamp = datum.ts
 				txn.Timestamp = datum.ts
 			}
-			if _, err := client.SendWrappedWith(tc.Sender(), tc.rng.context(), roachpb.Header{
+			if _, err := client.SendWrappedWith(tc.Sender(), tc.rng.context(context.Background()), roachpb.Header{
 				Timestamp: datum.ts,
 				Txn:       txn,
 			}, &dArgs); err != nil {
@@ -234,7 +236,7 @@ func TestGCQueueProcess(t *testing.T) {
 				txn.OrigTimestamp = datum.ts
 				txn.Timestamp = datum.ts
 			}
-			if _, err := client.SendWrappedWith(tc.Sender(), tc.rng.context(), roachpb.Header{
+			if _, err := client.SendWrappedWith(tc.Sender(), tc.rng.context(context.Background()), roachpb.Header{
 				Timestamp: datum.ts,
 				Txn:       txn,
 			}, &pArgs); err != nil {
@@ -345,7 +347,7 @@ func TestGCQueueTransactionTable(t *testing.T) {
 	tc := testContext{}
 	tsc := TestStoreContext()
 	tsc.TestingKnobs.TestingCommandFilter =
-		func(filterArgs storageutils.FilterArgs) error {
+		func(filterArgs storageutils.FilterArgs) *roachpb.Error {
 			if resArgs, ok := filterArgs.Req.(*roachpb.ResolveIntentRequest); ok {
 				id := string(resArgs.IntentTxn.Key)
 				resolved[id] = append(resolved[id], roachpb.Span{
@@ -355,7 +357,7 @@ func TestGCQueueTransactionTable(t *testing.T) {
 				// We've special cased one test case. Note that the intent is still
 				// counted in `resolved`.
 				if testCases[id].failResolve {
-					return util.Errorf("boom")
+					return roachpb.NewErrorWithTxn(util.Errorf("boom"), filterArgs.Hdr.Txn)
 				}
 			}
 			return nil
@@ -386,7 +388,7 @@ func TestGCQueueTransactionTable(t *testing.T) {
 		}
 		seqTS := txn.Timestamp
 		seqTS.Forward(*txn.LastHeartbeat)
-		if err := tc.rng.sequence.Put(tc.engine, nil, txn.ID, epo, 2*epo, txn.Key, seqTS, nil /* err */); err != nil {
+		if err := tc.rng.sequence.Put(tc.engine, nil, txn.ID, epo, 2*epo, txn.Key, seqTS, 0 /* priority */, nil /* err */); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -477,7 +479,7 @@ func TestGCQueueIntentResolution(t *testing.T) {
 		// TODO(spencerkimball): benchmark with ~50k.
 		for j := 0; j < 5; j++ {
 			pArgs := putArgs(roachpb.Key(fmt.Sprintf("%d-%05d", i, j)), []byte("value"))
-			if _, err := client.SendWrappedWith(tc.Sender(), tc.rng.context(), roachpb.Header{
+			if _, err := client.SendWrappedWith(tc.Sender(), tc.rng.context(context.Background()), roachpb.Header{
 				Txn: txns[i],
 			}, &pArgs); err != nil {
 				t.Fatalf("%d: could not put data: %s", i, err)

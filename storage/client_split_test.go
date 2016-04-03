@@ -304,7 +304,11 @@ func TestStoreRangeSplitIdempotency(t *testing.T) {
 	}
 
 	// Verify no intents remains on range descriptor keys.
-	for _, key := range []roachpb.Key{keys.RangeDescriptorKey(roachpb.RKeyMin), keys.RangeDescriptorKey(keys.Addr(splitKey))} {
+	splitKeyAddr, err := keys.Addr(splitKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []roachpb.Key{keys.RangeDescriptorKey(roachpb.RKeyMin), keys.RangeDescriptorKey(splitKeyAddr)} {
 		if _, _, err := engine.MVCCGet(store.Engine(), key, store.Clock().Now(), true, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -923,7 +927,7 @@ func TestStoreSplitReadRace(t *testing.T) {
 	var getStarted sync.WaitGroup
 	sCtx := storage.TestStoreContext()
 	sCtx.TestingKnobs.TestingCommandFilter =
-		func(filterArgs storageutils.FilterArgs) error {
+		func(filterArgs storageutils.FilterArgs) *roachpb.Error {
 			if et, ok := filterArgs.Req.(*roachpb.EndTransactionRequest); ok {
 				st := et.InternalCommitTrigger.GetSplitTrigger()
 				if st == nil || !st.UpdatedDesc.EndKey.Equal(splitKey) {
@@ -980,7 +984,11 @@ func TestStoreSplitReadRace(t *testing.T) {
 		var h roachpb.Header
 		h.Timestamp = now
 		args := putArgs(key(i), []byte("foo"))
-		h.RangeID = store.LookupReplica(keys.Addr(args.Key), nil).RangeID
+		keyAddr, err := keys.Addr(args.Key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.RangeID = store.LookupReplica(keyAddr, nil).RangeID
 		_, respH, pErr := storage.SendWrapped(store, context.Background(), h, &args)
 		if pErr != nil {
 			t.Fatal(pErr)

@@ -67,9 +67,7 @@ func (r *Replica) executeCmd(ctx context.Context, raftCmdID storagebase.CmdIDKey
 	if filter := r.store.ctx.TestingKnobs.TestingCommandFilter; filter != nil {
 		filterArgs := storageutils.FilterArgs{Ctx: ctx, CmdID: raftCmdID, Index: index,
 			Sid: r.store.StoreID(), Req: args, Hdr: h}
-		err := filter(filterArgs)
-		if err != nil {
-			pErr := roachpb.NewErrorWithTxn(err, h.Txn)
+		if pErr := filter(filterArgs); pErr != nil {
 			log.Infof("test injecting error: %s", pErr)
 			return nil, nil, pErr
 		}
@@ -123,7 +121,7 @@ func (r *Replica) executeCmd(ctx context.Context, raftCmdID storagebase.CmdIDKey
 		reply = &resp
 	case *roachpb.EndTransactionRequest:
 		var resp roachpb.EndTransactionResponse
-		resp, intents, err = r.EndTransaction(batch, ms, h, *tArgs)
+		resp, intents, err = r.EndTransaction(ctx, batch, ms, h, *tArgs)
 		reply = &resp
 	case *roachpb.RangeLookupRequest:
 		var resp roachpb.RangeLookupResponse
@@ -205,8 +203,11 @@ func (r *Replica) Put(
 	batch engine.Engine, ms *engine.MVCCStats, h roachpb.Header, args roachpb.PutRequest,
 ) (roachpb.PutResponse, error) {
 	var reply roachpb.PutResponse
-
-	return reply, engine.MVCCPut(batch, ms, args.Key, h.Timestamp, args.Value, h.Txn)
+	ts := roachpb.ZeroTimestamp
+	if !args.Inline {
+		ts = h.Timestamp
+	}
+	return reply, engine.MVCCPut(batch, ms, args.Key, ts, args.Value, h.Txn)
 }
 
 // ConditionalPut sets the value for a specified key only if
@@ -370,7 +371,7 @@ func (r *Replica) BeginTransaction(
 // TODO(tschottdorf): return nil reply on any error. The error itself
 // must be the authoritative source of information.
 func (r *Replica) EndTransaction(
-	batch engine.Engine, ms *engine.MVCCStats, h roachpb.Header, args roachpb.EndTransactionRequest,
+	ctx context.Context, batch engine.Engine, ms *engine.MVCCStats, h roachpb.Header, args roachpb.EndTransactionRequest,
 ) (roachpb.EndTransactionResponse, []roachpb.Intent, error) {
 	var reply roachpb.EndTransactionResponse
 
@@ -385,7 +386,9 @@ func (r *Replica) EndTransaction(
 	if ok, err := engine.MVCCGetProto(batch, key, roachpb.ZeroTimestamp, true, nil, reply.Txn); err != nil {
 		return reply, nil, err
 	} else if !ok {
-		return reply, nil, roachpb.NewTransactionStatusError("does not exist")
+		// Return a fresh empty reply because there's an empty Transaction
+		// proto in our existing one.
+		return roachpb.EndTransactionResponse{}, nil, roachpb.NewTransactionStatusError("does not exist")
 	}
 
 	if args.Deadline != nil && args.Deadline.Less(h.Timestamp) {
@@ -558,7 +561,7 @@ func (r *Replica) EndTransaction(
 
 		if err := func() error {
 			if ct.GetSplitTrigger() != nil {
-				if err := r.splitTrigger(r.context(), batch, ms, ct.SplitTrigger, reply.Txn.Timestamp); err != nil {
+				if err := r.splitTrigger(r.context(ctx), batch, ms, ct.SplitTrigger, reply.Txn.Timestamp); err != nil {
 					return err
 				}
 				*ms = engine.MVCCStats{} // clear stats, as split recomputed.
@@ -604,7 +607,8 @@ func (r *Replica) EndTransaction(
 	// BeginTransaction, any push will immediately succeed as a missing
 	// txn record on push sets the transaction to aborted. In both
 	// cases, the txn will be GCd on the slow path.
-	return reply, externalIntents, r.clearSequenceCache(batch, ms, false /* !poison */, reply.Txn.TxnMeta, reply.Txn.Status)
+	err := r.clearSequenceCache(batch, ms, false /* !poison */, reply.Txn.TxnMeta, reply.Txn.Status)
+	return reply, externalIntents, err
 }
 
 // intersectSpan takes an intent and a descriptor. It then splits the
@@ -696,7 +700,10 @@ func (r *Replica) RangeLookup(
 ) (roachpb.RangeLookupResponse, []roachpb.Intent, error) {
 	var reply roachpb.RangeLookupResponse
 	ts := h.Timestamp // all we're going to use from the header.
-	key := keys.Addr(args.Key)
+	key, err := keys.Addr(args.Key)
+	if err != nil {
+		return reply, nil, err
+	}
 	if !key.Equal(args.Key) {
 		return reply, nil, util.Errorf("illegal lookup of range-local key")
 	}
@@ -772,7 +779,11 @@ func (r *Replica) RangeLookup(
 			if err := v.GetProto(&r); err != nil {
 				return nil, err
 			}
-			if !keys.Addr(keys.RangeMetaKey(r.StartKey)).Less(key) {
+			startKeyAddr, err := keys.Addr(keys.RangeMetaKey(r.StartKey))
+			if err != nil {
+				return nil, err
+			}
+			if !startKeyAddr.Less(key) {
 				// This is the case in which we've picked up an extra descriptor
 				// we don't want.
 				return nil, nil
@@ -781,7 +792,7 @@ func (r *Replica) RangeLookup(
 			return &r, nil
 		}
 
-		if key.Less(keys.Addr(keys.Meta2KeyMax)) {
+		if key.Less(roachpb.RKey(keys.Meta2KeyMax)) {
 			startKey, endKey, err := keys.MetaScanBounds(key)
 			if err != nil {
 				return reply, nil, err
@@ -1172,8 +1183,7 @@ func (r *Replica) clearSequenceCache(
 	}
 
 	// The snake bites.
-	return r.sequence.Put(batch, ms, txn.ID, txn.Epoch, poison,
-		txn.Key, txn.Timestamp, nil)
+	return r.sequence.Put(batch, ms, txn.ID, txn.Epoch, poison, txn.Key, txn.Timestamp, txn.Priority, nil)
 }
 
 // ResolveIntent resolves a write intent from the specified key
@@ -1379,6 +1389,7 @@ func (r *Replica) LeaderLease(
 func (r *Replica) CheckConsistency(
 	args roachpb.CheckConsistencyRequest, desc *roachpb.RangeDescriptor,
 ) (roachpb.CheckConsistencyResponse, *roachpb.Error) {
+	ctx := r.context(context.TODO())
 	key := desc.StartKey.AsRawKey()
 	endKey := desc.EndKey.AsRawKey()
 	id := uuid.MakeV4()
@@ -1396,7 +1407,7 @@ func (r *Replica) CheckConsistency(
 			ChecksumID: id,
 		}
 		ba.Add(checkArgs)
-		_, pErr := r.Send(r.context(), ba)
+		_, pErr := r.Send(ctx, ba)
 		if pErr != nil {
 			return roachpb.CheckConsistencyResponse{}, pErr
 		}
@@ -1427,7 +1438,7 @@ func (r *Replica) CheckConsistency(
 			Checksum:   c.checksum,
 		}
 		ba.Add(checkArgs)
-		_, pErr := r.Send(r.context(), ba)
+		_, pErr := r.Send(ctx, ba)
 		if pErr != nil {
 			return roachpb.CheckConsistencyResponse{}, pErr
 		}
@@ -1653,7 +1664,10 @@ func (r *Replica) AdminSplit(
 			return reply, roachpb.NewErrorf("cannot split range at key %s: %v", splitKey, err)
 		}
 
-		splitKey = keys.Addr(foundSplitKey)
+		splitKey, err = keys.Addr(foundSplitKey)
+		if err != nil {
+			return reply, roachpb.NewError(err)
+		}
 		if !splitKey.Equal(foundSplitKey) {
 			return reply, roachpb.NewErrorf("cannot split range at range-local key %s", splitKey)
 		}
