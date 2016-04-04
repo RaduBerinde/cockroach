@@ -196,9 +196,11 @@ PROGRAM2(CId:INT, ValueSum:DECIMAL) {
 }
 ```
 
-Conceptually, an aggregator is an ordered map indexed by a tuple; for each tuple
-the aggregator receives a collection of tuples; the aggregator can optionally
-perform an operation on this collection. The `summer` aggregators is indexed by
+Conceptually, an aggregator is an ordered map indexed by a tuple (notated between `[]` in the example); for each tuple
+the aggregator receives a collection of tuples over its input channel (notated on the right side in the example); the aggregator can optionally
+perform an operation on this collection. 
+
+For example, the `summer` aggregators is indexed by
 a single element (`Cid`); it collects `Value` elements and for each index these
 elements are reduced by a sum operation. The `sorter` aggregator is a "no-op"
 aggregator that simply returns the collection of values for each value of the
@@ -221,10 +223,15 @@ A logical plan is used to instantiate a *physical plan*. At this planning step,
 we take into account where the master of each range is located; we divide the
 `TableScanner` work among the nodes that have data for that table.
 
+(FIXME: what's the relationship between `TableScanner` and `TableReader`?)
+
 It is important to note that correctly dividing the work is not necessary for
 correctness - if a range gets split or moved while we are planning the query it
-will not cause incorrect results. Some key reads might be slower because they
-actually happen remotely, but as long as most of the time, most of the keys are
+will not cause incorrect results. 
+This is because `TableScanner` speaks to the KV interface and is thus subject
+to the common consistency/resilience protocol.
+Some key reads might be slower because they
+become redirected to another node as a result of failover/split/etc, but as long as most of the time, most of the keys are
 read locally this should not be a problem.
 
 Assume that we run the query above on a **Gateway** node and the table has data
@@ -267,10 +274,10 @@ Processors are made up of three components:
 
 1. The *input synchronizer* merges the input streams into a single stream of
    data. Types:
-   * single-input (pass-through)
-   * unsynchronized: passes data elements from all input streams in whatever
+   * pass-through (single input)
+   * unordered-merge: passes data elements from all input streams in whatever
      order.
-   * ordered: input streams are sorted according to some part of the data; the
+   * ordered-merge: input streams are sorted according to some part of the data; the
      synchronizer is careful to interleave the streams so that the output is
      sorted
 
@@ -278,10 +285,12 @@ Processors are made up of three components:
 
 3. The *output router* splits the data processor's output to multiple streams;
    types:
-   * single-output (pass-through)
+   * pass-through (single-output)
    * mirror: every data element is sent to all output streams
    * hashing: each data element goes to a single output stream, chosen according
      to a hash function applied on a certain part of the data.
+
+(FIXME: is "hashing" really the right term?)
 
 # KV Layer requirements
 
