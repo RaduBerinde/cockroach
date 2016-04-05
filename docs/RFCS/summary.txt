@@ -1,0 +1,228 @@
+Thinking about logical plans.
+
+In a good solution we should be able to recognize the following
+concepts (possibly with a different terminology):
+
+- kv scans:
+  input: range selection(s)
+  output: k/v pairs
+  stateless
+
+- kv updates:
+  conditional or not
+  input: k/v pairs, or condition,k,v
+  output: the k's for which the value was modified
+
+- row-wise pure functions ("programs")
+  stateless
+  consume one row, produce 0 or more rows
+
+- "reducers" that produce 1 output row per group:
+  e.g. count, min, max, sum
+  constant, small state per group
+
+- "reducers" that produce multiple output rows per group:
+  e.g. limit, distinct, sort (within group)
+  some have a predictably bounded amount of state (limit),
+  for others it's more complicated (distinct, sort)
+  
+- we really want a cost function that estimates space and time requirements,
+  could be for example (but not necessarily):
+
+  - space: the worst case amount of state needed in total without
+    parallelism for a given logical plan; and then possibly
+    for each possible parallelisation opportunities, a function
+    that expresses the space cost as a function of the parallelization parameter
+
+  - time: the critical path through the query (minimum amount of
+    operations on the longest path).
+
+# Logical plans
+
+## Input syntax:
+
+Net := Conn
+    | 'let' Defs 'in' Conn
+    ;
+
+Defs := Def
+     | Def 'and' Defs
+     ;
+
+Def := <ident> '=' Atom
+    |  <ident> '=' Net
+    ;
+Atom :=
+        // general-purpose row function:
+        'func' '{' Prog '}' ':' Sel
+	// keep only the specified columns:
+    |   'keep'  Sel 
+    	// rename the column labels:
+    |   'rename'  Sel ':' Sel 
+    	// keep only rows satisfying the expression:
+    |   'filter' '(' <expr> ')'
+    	// scan an index/table extracting the specified columns
+    |   'scan' '(' ... ')' ':' Sel
+        // update/set an index/table to the specified values, inform which rows have caused an update
+    |   'update' '(' ... ':' Sel ')' ':' Sel
+        // reducers
+    |   'reduce' RedOp '(' Sel ')' ':' <identifier>
+        // sorter
+    |   'sort'  Sel 
+    	// keeping only the head of the inut
+    |   'limit' <number>
+    ;
+Prog := ...
+RedOp := 'count' | 'min' | 'max' ....;
+
+Conn := <ident>
+       | '(' Atom ')'
+       | Composition
+       | Separation
+       ;
+Composition := Net '.' Net
+            ;
+Separation  := '[' Sel ']' Net
+            ;
+	    
+Sel := <ident> | <ident> ',' Sel
+     | '*'
+     ;                 
+
+### Examples:
+
+/////////////////
+// SELECT age + 10 AS res FROM foo
+
+let src = scan(foo) : age
+    mod = func{ age + 10 } : res
+in src . mod
+
+// alternatively:
+
+(scan(foo):age) . (func{age+10}:res)
+
+/////////////////
+// SELECT age + 10 AS age2 FROM foo ORDER BY age2
+
+let src = scan(foo) : age
+and mod = func{ age + 10 }:age2
+and sorter = sort age2 
+in src . mod . sorter
+
+// alternatively:
+(scan(foo):age)
+. (func{age+10}:age2)
+. (sort age2)
+
+/////////////////
+// SELECT COUNT(*) AS c FROM foo
+
+(scan(foo):*) . (reduce count(*) : c) . (keep c)
+
+/////////////////
+// SELECT COUNT(*) AS c FROM foo GROUP BY age
+
+(scan(foo):*) . [age] ( (reduce count(*) : c) . (keep c) )
+
+/////////////////
+// SELECT COUNT(DISTINCT(v)) + 1 AS c FROM foo
+
+(scan(foo):v) . [v] (limit 1) . (reduce count(*) as c) . (keep c) . (func{c+1}:c)
+
+/////////////////
+// SELECT COUNT(DISTINCT(v)) AS c FROM foo GROUP BY age
+
+(scan(foo):v,age) . [age]( [v](limit 1) . (reduce count(*) : c) . (keep c) )
+
+///////////////////////
+// SELECT * FROM (SELECT COUNT(*) AS c FROM foo GROUP BY age ORDER BY c)
+// LIMIT 10;
+
+let subselect = (scan(foo):*) . [age](reduce count(*) : c) . (sort c)
+in subselect . (limit 10)
+
+///////////////////////
+// CREATE v  (name PRIMARY KEY, age INT, INDEX foo(age), accountnr INT)
+// SELECT COUNT(DISTINCT(accountr)) AS c FROM v WHERE age > 10 and age < 30
+// GROUP BY age HAVING MIN(Name) > 'k'
+
+(Scan(foo):(age,name))
+. filter(age>10) .  filter(age<30)
+. [age]( (reduce min(age) : tmp)
+       . filter(tmp > 'k')
+       . (keep accountnr)
+       . distinct(accountnr)
+       . (reduce count : c)
+       . (keep c))
+
+///////////////////////
+// SELECT Age, Sum(whatever) as s FROM v GROUP BY Age ORDER BY Age
+
+(Scan(v):Age,whatever) . [age]( (reduce sum(whatever) : s) )
+
+
+## Abstract syntax:
+
+Sel := tuple of ColName | '*' ;
+Node := Atom | C(Node, Node) | S(Sel, Node) ;
+Atom := Func(Prog,Sel)
+     | Scan(..., Sel)
+     | Update(...)
+     | Limiter
+     | Reduce(Op, id)
+     | Distinct(Sel)
+     | Sort(Sel)
+     ;
+ 
+### Examples:
+
+// (scan(foo):age) . (func{age+10}:res)
+
+C( Scan(...foo...,(age,)) ,
+   Func((age,), (res,), ...)
+   )
+
+// (scan(foo):*) . [age] (reduce count : c)
+
+C( Scan(...foo..., *),
+   S( (age,)
+      Reduce(count, c) ) )
+
+
+# Semantics
+
+Each Node in the abstract tree is conceptually
+a network with 1 input port and 1 output port.
+
+Composition rules:
+
+  A . B   - connect A's output to B's input
+[sel] N   - duplicate N virtually many times,
+            and distribute the network's input rows
+	    along the duplicates of N depending on the value
+	    of the selection. All the outputs
+	    of the duplicates of N are merged non-deterministically to
+	    form a common output
+
+Typing rules:
+
+- each network is identified by its input and output sets of column names.
+
+In[ C(A, B) ] = In[ A ]
+Out[ C(A, B) ] = Out[ B ]
+
+In[ S(Sel, N) ] = Union(Sel, In[ N ])
+Out[ S(Sel, N) ] = Out[ N ]
+
+In[ Func(Prog, Sel) ] = In[ Prog ]
+Out[ Func(Prog, Sel) ] = Union(In[ Prog ], Sel)
+
+Out[ Keep(Sel) ] = Sel
+
+...
+
+# Transformation to a physical plan
+
+
+
