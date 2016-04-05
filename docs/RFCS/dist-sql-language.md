@@ -54,26 +54,24 @@ Def := <ident> '=' Atom
     ;
 Atom :=
         // general-purpose row function:
-        'func' '{' Prog '}' ':' Sel
-	// keep only the specified columns:
-    |   'keep'  Sel 
-    	// rename the column labels:
-    |   'rename'  Sel ':' Sel 
-    	// keep only rows satisfying the expression:
-    |   'filter' '(' <expr> ')'
-    	// scan an index/table extracting the specified columns
-    |   'scan' '(' ... ')' ':' Sel
-        // update/set an index/table to the specified values, inform which rows have caused an update
-    |   'update' '(' ... ':' Sel ')' ':' Sel
+        'trans' Sel  '->' Sel  ':' Transforms
         // reducers
-    |   'reduce' RedOp '(' Sel ')' ':' <identifier>
+    |   'reduce' Sel '->' Sel ':' Redux
+    	// keep only rows satisfying the expression:
+    |   Sel ':' <expr> 
         // sorter
-    |   'sort'  Sel 
-    	// keeping only the head of the inut
-    |   'limit' <number>
+    |   'sort' Sel ':' Sel
+    	// keep only the head of the inut
+    |   Sel 'limit' <number>
+    	// scan an index/table extracting the specified columns
+    |   'read' '(' ... ')' '->' Sel
+        // update/set an index/table to the specified values, inform which rows have caused an update
+    |   'update' '(' ... ':' Sel ')' '->' Sel
     ;
-Prog := ...
-RedOp := 'count' | 'min' | 'max' ....;
+Transforms := Transform | Transform ',' Transforms ;
+Transform := <identifier> '=' <expr>
+Redux := Reduce | Reduce ',' Redux ;
+Reduce := <identifier> '=' RedOp '(' <expr> ')'
 
 Conn := <ident>
        | '(' Atom ')'
@@ -94,20 +92,20 @@ Sel := <ident> | <ident> ',' Sel
 /////////////////
 // SELECT age + 10 AS res FROM foo
 
-let src = scan(foo) : age
-    mod = func{ age + 10 } : res
+let src = scan(foo) -> age
+    mod = trans age -> res : res = age + 10
 in src . mod
 
 // alternatively:
 
-(scan(foo):age) . (func{age+10}:res)
+(scan(foo)->age) . (trans age->res : res=age+10)
 
 /////////////////
 // SELECT age + 10 AS age2 FROM foo ORDER BY age2
 
-let src = scan(foo) : age
-and mod = func{ age + 10 }:age2
-and sorter = sort age2 
+let src = scan(foo) -> age
+and mod = trans age->age2 : age2 = age + 10
+and sorter = sort age2 : age2
 in src . mod . sorter
 
 // alternatively:
@@ -215,12 +213,12 @@ Out[ C(A, B) ] = Out[ B ]
 In[ S(Sel, N) ] = Union(Sel, In[ N ])
 Out[ S(Sel, N) ] = Out[ N ]
 
-In[ Func(Prog, Sel) ] = In[ Prog ]
-Out[ Func(Prog, Sel) ] = Union(In[ Prog ], Sel)
+In[ Func(Prog, Sel) ] = In[ Prog ]+
+Out[ Func(Prog, Sel) ] = Sel
 
+In[ Keep(Sel) ] = Sel+
 Out[ Keep(Sel) ] = Sel
 
-...
 
 # Transformation to a physical plan
 
