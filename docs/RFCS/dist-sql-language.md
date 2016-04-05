@@ -71,6 +71,8 @@ This is equivalent to, and could be produced as the plan for, the SQL query:
 SELECT 30 as Age, 'Radu' as Name
 ``` 
 
+The general syntax for `gen` is "`gen <columns> : <definitions>`".
+
 In the logical plan language, we can give any program a name:
 
 ```
@@ -86,13 +88,15 @@ let simple = ...
 in simple . (trans Age,Name -> Age,Name : Age = Age+10)
 ```
 
-This would be a possible translation for the SQL query:
+This simple program using both the binary operator '.' and the
+primitive program `trans` would be a possible translation for the SQL
+query:
 
 ```sql
 SELECT Age+10 as Age, Name FROM (SELECT 30 AS Age, 'Radu' AS Name)
 ```
 
-The '.' says, take all the output from the program on the left and
+The operator '.' says, take all the output from the program on the left and
 give it as input to the program on the right. The column names
 must match on both sides.
 
@@ -243,28 +247,66 @@ let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
 in src . (reduce Age -> c,m : c = count(), m = max(Age)) 
 ```
 
-It is possible to reuse column names from the input interface in the
-output interface without defining a reduction for them. When this
-occurs, the reduction simply copies the corresponding columns from the
-last row that was processed, and adds them to the output. This way we
-can execute the following:
+## Diversions
+
+The primitive program `reduce` is defined to perform an
+aggregation for every column in its output. However in SQL we sometimes have requests
+like the following:
+
 
 ```sql
 SELECT Age, COUNT(*) AS c FROM foo
 ```
 
-using:
+That is, the value of Age must be propagated in the result "around" the reduction. 
+The `reduce` program cannot do this on its own. 
+
+For this the language offers a unary operator to *divert* columns
+around a sub-program.
+
+This is noted as follows: `{ T } ( E )`. That is, a tuple between braces,
+followed by a program between parentheses.
+
+The meaning of this is that every column marked as diverted 
+is copied unchanged in all the sub-programs' output rows. 
+
+For primitive programs that can output multiple rows for a single
+input (e.g. `scan`), the same column tuple is reproduced in each row
+corresponding to a single input row.
+
+For `reduce` programs, the *last* known value for the diverted columns
+is added to the output row.
+
+This way we can handle the SQL query above using:
 
 ```
 let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
-in src . (reduce Age -> Age,c : c = count()) 
+in src . (trans Age -> Age,c : c = Age) . {Age} (reduce c -> c : c = count()) 
 ```
+
+This program duplicates the Age column into "c", then
+diverts Age, then reduces "c".
+
+This is slightly more verbose than strictly necessary. Remember, the
+language supports row with no columns, for example that's what `init` produces.
+Thus it is possible to divert all the columns from a program's input,
+and still get the desired behavior. For example:
+
+
+```
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
+in src . {Age} (reduce  -> c : c = count()) 
+```
+
+What this does is divert Age from the reducer's input. Because Age
+was the only column, reduce then only observes empty rows as input,
+one per row in `src`'s output. The reduction can still take place
+because `count()` does not need the row's data. The reduction
+result is then combined with the diverted Age column again.
 
 ## Aggregation with grouping
 
-So far the examples have only used the binary operator '.' to compose two programs.
-
-The language also offers a unary operator for grouping, noted as
+The language also offers another unary operator, this time for grouping, noted as
 `[ T ] ( E )`, that is: a tuple between square brackets, followed by a
 program between parentheses.
 
@@ -308,6 +350,20 @@ grouping operator also gives us an opportunity to parallelize the computation,
 and then it becomes advantageous to do as much work as possible inside the grouping
 operator where the work can be spread to multiple cores/machines.
 
+Of course the grouping operator can be advantageously combined with the diversion operator.
+For example the SQL query:
+
+```sql
+SELECT Age, COUNT(*) FROM foo GROUP BY Age
+```
+
+can be computed using:
+
+```
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
+in src 
+. [Age]( {Age} ( reduce -> c : c = count()) )
+```
 
 [*] The fact that the grouping operator destroys the outer order is acceptable, since
 SQL does not guarantee ordering anyway:
@@ -335,9 +391,123 @@ Here, `limit` takes the first record in each input group and emits it as output,
 which means only 1 row for each value of Age is given as input to the counter
 reductor on the right.
 
-## Joins
+
+## Discards
+
+For examples below and for convenience for debugging / explaining
+what's going on with the query language we also introduce syntax to
+discard columns from the data between two consecutive programs. We
+note this as `/ T1 : T2 /`, meaning "remove columns from T1 not listed in T2". This
+is syntactic sugar for `trans T1 -> T2` with no computation.
+
+For example we can simplify the last example above from:
+
+```
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
+in src . [Age] ( limit Age : 1 ) . ( reduce Age -> c : c = count() )
+```
+
+to:
+
+```
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
+in src . [Age] ( /Age:/ . limit : 1 ) . ( reduce -> c : c = count() )
+```
+
+## Unoptimized Simple Joins
+
+Let's work with a slightly more realistic db example, the one given on
+[Wikipedia](https://en.wikipedia.org/wiki/Join_(SQL)#Sample_tables):
+
+```sql
+CREATE TABLE department
+(
+ DptID INT,
+ DptName VARCHAR(20)
+);
+CREATE TABLE employee
+(
+ Name VARCHAR(20),
+ DptID INT
+);
+```
+
+We want to cross join on the DptID column, we can do this as follows (without using indices):
+
+```
+// SQL: SELECT * FROM department CROSS JOIN employee
+let src1 = (gen Keys : Keys = '/department/*') . (scan Keys -> dDptID,dDptName)
+let src2 = (gen Keys : Keys = '/employee/*' ) . (scan Keys -> eDptID,dDptName)
+in src1 . [dDptId,dDptName]( {dDptId,dDptName} (src2) )
+```
+
+For an inner or natural join, we restrict the cross join further (still no indices):
+
+```
+// SQL: SELECT * FROM department NATURAL JOIN employee
+// SQL: SELECT * FROM department AS d INNER JOIN employee AS e ON d.DptID = e.DptID
+let src1 = (gen Keys : Keys = '/department/*') . (scan Keys -> dDptID,dDptName)
+let src2 = (gen Keys : Keys = '/employee/*' ) . (scan Keys -> eDptID,eName)
+in src1 . [dDptId,dDptName]( {dDptId,dDptName} (src2) 
+                           . (filter dDptID,dDptID,eDptID,eName : eDptID = dDptID ) )
+```
+
+This last construct supports arbitrarily inner joins, it's just a matter of adapting the 
+filter in the inner group:
+
+```
+// SQL: SELECT * FROM department AS d INNER JOIN employee AS e ON d.DptID <> e.DptID
+let src1 = (gen Keys : Keys = '/department/*') . (scan Keys -> dDptID,dDptName)
+let src2 = (gen Keys : Keys = '/employee/*' ) . (scan Keys -> eDptID,eName)
+in src1 . [dDptId,dDptName]( {dDptId,dDptName} (src2) 
+                           . (filter dDptID,dDptID,eDptID,eName : eDptID <> dDptID ) )
+```
+
+## Outer joins
+
+For outer join we must insert nulls for every row that doesn't match.
+For this we reuse the primitive program `init` which does a little more than
+seen so far: `init` has an implicit input (accepting any column type) and has the following behavior:
+
+- if any input rows are observed, then it produces no output;
+- if no input row is observed, then it produces a single empty tuple as output.
+
+Because `gen` is based on `init` it inherits this property, and we can use it to
+*produce a row of arbitrary data if no row was observed in gen's input*.
+
+We can use this advantageously for outer joins:
+
+```
+// SQL: SELECT * FROM department AS d OUTER JOIN employee AS e ON d.DptID = e.DptID
+let src1 = (gen Keys : Keys = '/department/*') . (scan Keys -> dDptID,dDptName)
+let src2 = (gen Keys : Keys = '/employee/*' ) . (scan Keys -> eDptID,eName)
+let copy_dptid_to_a = (trans dDptID,dDptName -> a,dDptID,dDptName : a = dDptID)
+in src1 . [dDptId,dDptName]( copy_dptid_to_a
+                           . {dDptId,dDptName} (
+                                src2
+                             .  (filter a,eDptID,eName : a <> eDptID )
+							 .  /eDptID,eName,a : eDptID,eName/
+		  			         . ( gen eDptID,eName : eDptID = null, eName = null ) ) )
+```
 
 
+## SQL's "having"
+
+For example:
+
+```sql
+ CREATE bar  (Name STRING, Age INT, accountnr INT)
+ SELECT COUNT(DISTINCT(accountr)) AS c FROM bar WHERE Age > 10 and Age < 30
+ GROUP BY Age HAVING MIN(Name) > 'k'
+```
+
+Basically "HAVING" is like a "FILTER" clause applied to the result of the GROUP BY. 
+
+Possible program: (FIXME)
+
+## Index-based joins
+
+(left as an exercise to the reader)
 
 
 ## Input syntax - BNF
@@ -352,111 +522,53 @@ Defs : Def
      | Def 'and' Defs
      ;
 
-Def : <ident> '=' Atom
+Def := <ident> '=' Atom
     |  <ident> '=' Net
     ;
-Atom :
+Atom :=
         // general-purpose row function:
-        'trans' Sel  '->' Sel  ':' Transforms
+		'trans' Sel  '->' Sel  Transforms
+		// generate one empty row when there is no input
+	|   'init'
+	    // sugar for init . (trans -> Sel : Transforms)
+	|	'gen' Sel ':' Transforms
         // reducers
     |   'reduce' Sel '->' Sel ':' Redux
     	// keep only rows satisfying the expression:
-    |   Sel ':' <expr> 
+    |   'filter' Sel ':' <expr> 
         // sorter
     |   'sort' Sel ':' Sel
     	// keep only the head of the inut
-    |   Sel 'limit' <number>
+    |   'limit' Sel ':' <number>
     	// scan an index/table extracting the specified columns
-    |   'read' '(' ... ')' '->' Sel
+    |   'scan' <ident> '->' Sel
         // update/set an index/table to the specified values, inform which rows have caused an update
     |   'update' '(' ... ':' Sel ')' '->' Sel
     ;
-Transforms : Transform | Transform ',' Transforms ;
-Transform : <identifier> '=' <expr>
-Redux : Reduce | Reduce ',' Redux ;
-Reduce : <identifier> '=' RedOp '(' <expr> ')'
-
-Conn : <ident>
+Transforms := /*nothing*/ | ':' TransformList ;
+TransformList := Transform | Transform ',' Transforms ;
+Transform := <identifier> '=' <expr>
+Redux := Reduce | Reduce ',' Redux ;
+Reduce := <identifier> '=' RedOp '(' <identifier> ')'
+       |  <identifier> '=' 'count' '(' ')'
+	   ;
+RedOp := 'max' | 'min' | 'sum'
+Conn := <ident>
        | '(' Atom ')'
        | Composition
        | Separation
+	   | Diversion
        ;
-Composition : Net '.' Net
+Composition := Net '.' Net
             ;
-Separation  : '[' Sel ']' Net
+Separation  := '[' Sel ']' Net
             ;
-	    
-Sel : <ident> | <ident> ',' Sel
+Diversion   := '/' Sel : Sel '/' 
+	        ;
+Sel := <ident> | <ident> ',' Sel
      | '*'
      ;                 
 ```
-
-## Examples:
-
-/////////////////
-// SELECT COUNT(DISTINCT(v)) + 1 AS c FROM foo
-
-(scan(foo):v) . [v] (limit 1) . (reduce count(*) as c) . (keep c) . (func{c+1}:c)
-
-/////////////////
-// SELECT COUNT(DISTINCT(v)) AS c FROM foo GROUP BY age
-
-(scan(foo):v,age) . [age]( [v](limit 1) . (reduce count(*) : c) . (keep c) )
-
-///////////////////////
-// SELECT * FROM (SELECT COUNT(*) AS c FROM foo GROUP BY age ORDER BY c)
-// LIMIT 10;
-
-let subselect = (scan(foo):*) . [age](reduce count(*) : c) . (sort c)
-in subselect . (limit 10)
-
-///////////////////////
-// CREATE v  (name PRIMARY KEY, age INT, INDEX foo(age), accountnr INT)
-// SELECT COUNT(DISTINCT(accountr)) AS c FROM v WHERE age > 10 and age < 30
-// GROUP BY age HAVING MIN(Name) > 'k'
-
-(Scan(foo):(age,name))
-. filter(age>10) .  filter(age<30)
-. [age]( (reduce min(age) : tmp)
-       . filter(tmp > 'k')
-       . (keep accountnr)
-       . distinct(accountnr)
-       . (reduce count : c)
-       . (keep c))
-
-///////////////////////
-// SELECT Age, Sum(whatever) as s FROM v GROUP BY Age ORDER BY Age
-
-(Scan(v):Age,whatever) . [age]( (reduce sum(whatever) : s) )
-
-
-## Abstract syntax:
-
-Sel := tuple of ColName | '*' ;
-Node := Atom | C(Node, Node) | S(Sel, Node) ;
-Atom := Func(Prog,Sel)
-     | Scan(..., Sel)
-     | Update(...)
-     | Limiter
-     | Reduce(Op, id)
-     | Distinct(Sel)
-     | Sort(Sel)
-     ;
- 
-### Examples:
-
-// (scan(foo):age) . (func{age+10}:res)
-
-C( Scan(...foo...,(age,)) ,
-   Func((age,), (res,), ...)
-   )
-
-// (scan(foo):*) . [age] (reduce count : c)
-
-C( Scan(...foo..., *),
-   S( (age,)
-      Reduce(count, c) ) )
-
 
 # Semantics
 
@@ -480,17 +592,30 @@ Typing rules:
 In[ C(A, B) ] = In[ A ]
 Out[ C(A, B) ] = Out[ B ]
 
-In[ S(Sel, N) ] = Union(Sel, In[ N ])
-Out[ S(Sel, N) ] = Out[ N ]
+In[ S(S, N) ] = Union(S, In[ N ])
+Out[ S(S, N) ] = Out[ N ]
 
-In[ Func(Prog, Sel) ] = In[ Prog ]+
-Out[ Func(Prog, Sel) ] = Sel
+In[ Func(S1, S2, Prog) ] = S1
+Out[ Func(S1, S2, Prog) ] = S2
 
-In[ Keep(Sel) ] = Sel+
-Out[ Keep(Sel) ] = Sel
-
+and so forth (each node in the ASt has explicit typings)
 
 # Transformation to a physical plan
+
+A naive implementation instantiates all the primitive programs as goroutines with
+channels betwen them. 
+
+For efficiency: if two or more simple programs are composed using '.' 
+they can be implemented as a single goroutine containing a loop invoking
+the sub-programs sequentially.
+
+For parallelization: the grouping operator can be distributed by
+hashing the grouping columns to pick a node where to compute the inner
+program.
+
+There can be some transformations at the level of this language. For
+example a grouping followed by a program like `[...]( A ) . B` can be
+transformed to `[...](A . B)` if B is either `trans` or `filter`.
 
 
 
