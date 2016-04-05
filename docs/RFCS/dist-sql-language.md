@@ -43,6 +43,7 @@ concepts (possibly with a different terminology):
 ## Input syntax:
 
 ```yacc
+%%
 Net : Conn
     | 'let' Defs 'in' Conn
     ;
