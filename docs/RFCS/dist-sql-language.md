@@ -103,19 +103,23 @@ The program "`trans Age,Name -> Age,Name : Age = Age+10`" says:
 - keeps Name unchanged
 
 Actually `gen` is not a primitive construct, the real primitive
-construct is `init` which creates a single row with no columns (empty
-tuple). `gen T : E` is really equivalent to `init . trans /*nothing*/ -> T : E`.
+construct is `init` which produces a single row with no columns (empty
+tuple). So `gen T : E` is really equivalent to `init . trans /*nothing*/ -> T : E`.
+
+## Simple queries
 
 The programs so far work on a single constant row of data. This is not
-very interesting, so we also have the program `scan` which reads values
-from the database. Scan is not a source generator but really a transformer:
-it takes rows of keys as input, and produces rows of values as output.
+very interesting!
 
-For example if we want to read all rows from prefix `/10/20`, where
+Let's look at the primitive program `scan` which reads values
+from the database. Scan is not a source generator but really a transformer:
+it takes rows with a single key range column as input, and produces rows of values as output.
+
+For example if we want to read all rows from range `/10/20-/10/30`, where
 the schema says we have 2 columns in each row, we would say:
 
 ```
-(gen Key : Key = '/10/20') . (scan Key -> (Age, Name))
+(gen Keys : Keys = '/10/20-/10/30') . (scan Keys -> Age, Name)
 ```
 
 Using the constructs so far we can construct more interesting logical programs. For example
@@ -128,7 +132,7 @@ SELECT Age + 30 AS Older, Name FROM Foo
 would be translated as:
 
 ```
-let src = (gen Key : Key = '/10/20') . (scan Key -> (Age, Name))
+let src = (gen Keys : Keys = '/Foo/*') . (scan Keys -> Age, Name)
 in src . (trans Age,Name -> Older, Name : Older = Age + 30)
 ```
 
@@ -139,11 +143,77 @@ For example:
 
 ```
 let src = ...
-in src . (filter (Age,Name) : Age > 30)
+in src . (filter Age,Name : Age > 30)
 ```
 
 The columns indicate the interface of the filter. All columns of the input are passed
 through to the output. The expression can only use listed column names.
+
+With the constructs so far we can implement an optimized. Given the schema and query:
+
+```sql
+CREATE TABLE foo (Name TEXT PRIMARY KEY, Age INT)
+```
+
+We can run the following query:
+
+```sql
+SELECT Age + 10 AS Older FROM foo WHERE Name = 'Radu' AND Age > 30
+```
+
+using the following program:
+
+```
+let src = (gen Keys : Keys = '/foo/Radu') . (scan Keys -> Age)
+in src 
+ . (filter Age : Age > 30) 
+ . (trans Age -> Older : Older = Age + 10
+```
+
+And then, for an indexed read:
+
+```sql
+CREATE TABLE foo (Name TEXT PRIMARY KEY, Age INT, INDEX idx(Age))
+SELECT Name, Age + 10 AS Older FROM foo WHERE Age >= 20 and Age < 30
+```
+
+we can use the following:
+
+```
+let src = (gen Keys : Keys = '/idx/20-/idx/30') 
+        . (scan Keys -> Primary)
+		. (scan Primary -> Age, Name)
+in src . (trans Age, Name -> Name, Older : Older = Age + 10)
+```
+
+## More simple queries
+
+The last three primitive programs are:
+
+- `limit T : Num` take only the `Num` first rows of the input, then stop.
+- `sort T1 : T2` sort the input rows containing columns `T1` using the keys listed in tuple `T2`.
+- `update` (interface TBD): modify rows in the database. This takes the key,values to update
+  as input (potentially also a condition for CPut) and reports which rows were modified as output.
+  
+Using these primitives and the constructs so far we can implement more complex queries. For example:
+
+```
+// SQL: SELECT Age,Name FROM foo ORDER BY Age
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age,Name)
+in src . (sort Age,Name : Age) 
+```
+
+```
+// SQL: SELECT Age,Name FROM foo ORDER BY Age LIMIT 10
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age,Name)
+in src . (sort Age,Name : Age) . (limit Age,Name : 10)
+```
+
+```
+// SQL: SELECT Age,Name FROM (SELECT Age,Name FROM foo LIMIT 10) ORDER BY Age
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age,Name)
+in src . (limit Age,Name : 10) . (sort Age,Name : Age)
+```
 
 
 
