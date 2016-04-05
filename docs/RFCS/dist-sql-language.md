@@ -188,7 +188,7 @@ in src . (trans Age, Name -> Name, Older : Older = Age + 10)
 
 ## More simple queries
 
-The last three primitive programs are:
+The next "simple" primitive programs are:
 
 - `limit T : Num` take only the `Num` first rows of the input, then stop.
 - `sort T1 : T2` sort the input rows containing columns `T1` using the keys listed in tuple `T2`.
@@ -214,6 +214,129 @@ in src . (sort Age,Name : Age) . (limit Age,Name : 10)
 let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age,Name)
 in src . (limit Age,Name : 10) . (sort Age,Name : Age)
 ```
+
+## Simple aggregations
+
+The primitive program `reduce` provides aggregation, with a syntax similar to `trans`:
+
+```reduce T -> T : Col = Op(<expr>), Col = Op(<expr>), ...``
+
+This primitive performs one or more aggregations over all its input rows, then 
+produces 1 output row with the result(s).
+
+For example:
+
+```reduce Age -> MaxAge : MaxAge = MAX(Age)```
+
+reports the maximum age in the input as a single row.
+
+This way we can evaluate SQL queries like the following:
+
+```sql
+SELECT COUNT(*) AS c, MAX(Age) as m FROM foo
+```
+
+using:
+
+```
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
+in src . (reduce Age -> c,m : c = count(), m = max(Age)) 
+```
+
+It is possible to reuse column names from the input interface in the
+output interface without defining a reduction for them. When this
+occurs, the reduction simply copies the corresponding columns from the
+last row that was processed, and adds them to the output. This way we
+can execute the following:
+
+```sql
+SELECT Age, COUNT(*) AS c FROM foo
+```
+
+using:
+
+```
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
+in src . (reduce Age -> Age,c : c = count()) 
+```
+
+## Aggregation with grouping
+
+So far the examples have only used the binary operator '.' to compose two programs.
+
+The language also offers a unary operator for grouping, noted as
+`[ T ] ( E )`, that is: a tuple between square brackets, followed by a
+program between parentheses.
+
+What this means: the input rows coming into the grouping operator
+are split into sub-sequences (groups), one per distinct value of the columns identified by the tuple. 
+The inner program is then instantiated once for each group, and ran independently for its group.
+
+The outputs of the instances of the inner program are then merged non-deterministically [*].
+
+Once we have this, we can perform grouped aggregations easily. For example in SQL:
+
+```
+SELECT COUNT(*) + 10 FROM foo GROUP BY Age
+```
+
+can be computed using:
+
+```
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
+in src 
+. [Age](reduce Age -> c : c = count())
+. (trans c -> c : c = c + 10)
+```
+
+From a logical perspective this plan is also equivalent to:
+
+```
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
+in src 
+. [Age]( (reduce Age -> c : c = count())
+       . (trans c -> c : c = c + 10)
+	   )
+```
+
+because applying a rowwise transformation on the subgroups gives identical results
+as applying them on the combined result of the grouping. 
+
+However at the moment where
+we start transforming this to a physical plan a difference starts to appear: the
+grouping operator also gives us an opportunity to parallelize the computation,
+and then it becomes advantageous to do as much work as possible inside the grouping
+operator where the work can be spread to multiple cores/machines.
+
+
+[*] The fact that the grouping operator destroys the outer order is acceptable, since
+SQL does not guarantee ordering anyway:
+
+http://sqlblog.com/blogs/alexander_kuznetsov/archive/2009/05/20/without-order-by-there-is-no-default-sort-order.aspx
+
+https://blogs.msdn.microsoft.com/conor_cunningham_msft/2008/08/27/no-seatbelt-expecting-order-without-order-by/
+
+## Distinct values
+
+There needs not be any separate primitive program for SQL's `distinct` keyword. Indeed, the following query:
+
+```sql
+SELECT COUNT(DISTINCT Age) AS c FROM foo
+```
+
+can be run as:
+
+```
+let src = (gen Keys : Keys = '/foo/*') . (scan Keys -> Age)
+in src . [Age] ( limit Age : 1 ) . ( reduce Age -> c : c = count() )
+```
+
+Here, `limit` takes the first record in each input group and emits it as output,
+which means only 1 row for each value of Age is given as input to the counter
+reductor on the right.
+
+## Joins
+
 
 
 
@@ -268,41 +391,7 @@ Sel : <ident> | <ident> ',' Sel
      ;                 
 ```
 
-### Examples:
-
-/////////////////
-// SELECT age + 10 AS res FROM foo
-
-let src = scan(foo) -> age
-    mod = trans age -> res : res = age + 10
-in src . mod
-
-// alternatively:
-
-(scan(foo)->age) . (trans age->res : res=age+10)
-
-/////////////////
-// SELECT age + 10 AS age2 FROM foo ORDER BY age2
-
-let src = scan(foo) -> age
-and mod = trans age->age2 : age2 = age + 10
-and sorter = sort age2 : age2
-in src . mod . sorter
-
-// alternatively:
-(scan(foo):age)
-. (func{age+10}:age2)
-. (sort age2)
-
-/////////////////
-// SELECT COUNT(*) AS c FROM foo
-
-(scan(foo):*) . (reduce count(*) : c) . (keep c)
-
-/////////////////
-// SELECT COUNT(*) AS c FROM foo GROUP BY age
-
-(scan(foo):*) . [age] ( (reduce count(*) : c) . (keep c) )
+## Examples:
 
 /////////////////
 // SELECT COUNT(DISTINCT(v)) + 1 AS c FROM foo
