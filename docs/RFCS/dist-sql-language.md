@@ -38,9 +38,116 @@ concepts (possibly with a different terminology):
   - time: the critical path through the query (minimum amount of
     operations on the longest path).
 
-# Logical plans
+# Overview proposal
 
-## Input syntax:
+- a first language for logical plans, with separate input syntax (for humans and explanations) 
+  and abstract syntax (for transformations/optimizations, simpler than the input)
+  
+  This contains constructs for:
+  - rowwise transformations
+  - filters
+  - reductions (SQL aggregations)
+  - concurrent (independent) operations
+  - with some intelligence borrowed from Sawzall ("aggregators" = smart routing)
+  
+  The semantic model is a synchronous process network, which is equivalent to
+  functional composition of stream transformers
+  
+- a second language for physical plans, this is just processes and connections.
+
+
+# Language for logical plans
+
+## Getting a feeling for it
+
+An example simple logical program,
+that just produces one row of data:
+
+`gen Age,Name : Age = 30, Name = 'Radu'`
+
+This is equivalent to, and could be produced as the plan for, the SQL query:
+
+```sql 
+SELECT 30 as Age, 'Radu' as Name
+``` 
+
+In the logical plan language, we can give any program a name:
+
+```
+let simple = gen Age,Name : Age = 30, Name = 'Radu'
+in simple
+```
+
+Once a program has a name, we can compose it with another. For example
+`trans` can perform rowise computations.
+
+```
+let simple = ...
+in simple . (trans Age,Name -> Age,Name : Age = Age+10)
+```
+
+This would be a possible translation for the SQL query:
+
+```sql
+SELECT Age+10 as Age, Name FROM (SELECT 30 AS Age, 'Radu' AS Name)
+```
+
+The '.' says, take all the output from the program on the left and
+give it as input to the program on the right. The column names
+must match on both sides.
+
+The program "`trans Age,Name -> Age,Name : Age = Age+10`" says:
+- this is a transformers that takes rows with columns (Age, Name) as input
+- produces rows with columns (Age,Name) as output
+- performs the computation Age(output) = Age(input)+10 
+- keeps Name unchanged
+
+Actually `gen` is not a primitive construct, the real primitive
+construct is `init` which creates a single row with no columns (empty
+tuple). `gen T : E` is really equivalent to `init . trans /*nothing*/ -> T : E`.
+
+The programs so far work on a single constant row of data. This is not
+very interesting, so we also have the program `scan` which reads values
+from the database. Scan is not a source generator but really a transformer:
+it takes rows of keys as input, and produces rows of values as output.
+
+For example if we want to read all rows from prefix `/10/20`, where
+the schema says we have 2 columns in each row, we would say:
+
+```
+(gen Key : Key = '/10/20') . (scan Key -> (Age, Name))
+```
+
+Using the constructs so far we can construct more interesting logical programs. For example
+the SQL query
+
+```sql
+SELECT Age + 30 AS Older, Name FROM Foo
+```
+
+would be translated as:
+
+```
+let src = (gen Key : Key = '/10/20') . (scan Key -> (Age, Name))
+in src . (trans Age,Name -> Older, Name : Older = Age + 30)
+```
+
+The next useful program is `filter`, which only keeps rows of its input
+that match a boolean expression. The syntax is trivial: `filter Columns... : Expression`.
+
+For example:
+
+```
+let src = ...
+in src . (filter (Age,Name) : Age > 30)
+```
+
+The columns indicate the interface of the filter. All columns of the input are passed
+through to the output. The expression can only use listed column names.
+
+
+
+## Input syntax - BNF
 
 ```yacc
 %%
