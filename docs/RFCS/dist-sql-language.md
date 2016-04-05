@@ -1,5 +1,6 @@
-Thinking about logical plans.
+# Brain dump
 
+Thinking about logical plans.
 In a good solution we should be able to recognize the following
 concepts (possibly with a different terminology):
 
@@ -41,18 +42,19 @@ concepts (possibly with a different terminology):
 
 ## Input syntax:
 
-Net := Conn
+```yacc
+Net : Conn
     | 'let' Defs 'in' Conn
     ;
 
-Defs := Def
+Defs : Def
      | Def 'and' Defs
      ;
 
-Def := <ident> '=' Atom
+Def : <ident> '=' Atom
     |  <ident> '=' Net
     ;
-Atom :=
+Atom :
         // general-purpose row function:
         'trans' Sel  '->' Sel  ':' Transforms
         // reducers
@@ -68,24 +70,25 @@ Atom :=
         // update/set an index/table to the specified values, inform which rows have caused an update
     |   'update' '(' ... ':' Sel ')' '->' Sel
     ;
-Transforms := Transform | Transform ',' Transforms ;
-Transform := <identifier> '=' <expr>
-Redux := Reduce | Reduce ',' Redux ;
-Reduce := <identifier> '=' RedOp '(' <expr> ')'
+Transforms : Transform | Transform ',' Transforms ;
+Transform : <identifier> '=' <expr>
+Redux : Reduce | Reduce ',' Redux ;
+Reduce : <identifier> '=' RedOp '(' <expr> ')'
 
-Conn := <ident>
+Conn : <ident>
        | '(' Atom ')'
        | Composition
        | Separation
        ;
-Composition := Net '.' Net
+Composition : Net '.' Net
             ;
-Separation  := '[' Sel ']' Net
+Separation  : '[' Sel ']' Net
             ;
 	    
-Sel := <ident> | <ident> ',' Sel
+Sel : <ident> | <ident> ',' Sel
      | '*'
      ;                 
+```
 
 ### Examples:
 
