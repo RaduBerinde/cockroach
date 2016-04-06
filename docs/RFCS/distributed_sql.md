@@ -166,7 +166,7 @@ plans. It is a conceptual model and *not* a description of what actually happens
 in our system.
 
 The logical plan is made out of *logical nodes* or *aggregators*. Each
-aggregator can be thought of as processing an input stream of data (or more
+aggregator can be thought of as consuming an input stream of data (or more
 streams for joins, but let's leave that aside for now) and producing an output
 stream of data. Each data element is a tuple of column values; both the input
 and the output streams have a set schema. The schema is a set of columns and
@@ -183,38 +183,48 @@ input columns, which means there is no grouping; this is a special but important
 case in which we are not aggregating multiple pieces of data, but we may be
 filtering, transforming, or reordering individual pieces of data.
 
-Some aggregators can make use of SQL expressions, evaluating them with various
-inputs as part of their work. In particular, we introduce the *program*
-aggregator which is a "programmable" aggregator which processes the input stream
-sequentially (one element at a time), potentially emitting output elements. This
-is an aggregator with no grouping (group key is the full set of columns); the
-processing of each data element is independent.
+Aggregators can make use of SQL expressions, evaluating them with various inputs
+as part of their work. In particular, all aggregators can optionally use an
+**output filter** expression - a boolean function that is used to discard
+elements that would have otherwise been part of the output stream.
 
-Special `TableReader` aggregators with no inputs are used as data sources. A
-special `Final` aggregator with no outputs is used for the results of the
+(Note: the alternative of restricting use of SQL expressions to only certain
+aggregators was considered; that approach makes it much harder to support outer
+joins, where the `ON` expression evaluation must be part of the internal join
+logic and not just a filter on the output.)
+
+A special type of aggregator is the **program** aggregator which is a
+"programmable" aggregator which processes the input stream sequentially (one
+element at a time), potentially emitting output elements. This is an aggregator
+with no grouping (group key is the full set of columns); the processing of each
+data element is independent.
+
+Special **TableReader** aggregators with no inputs are used as data sources; a
+table reader can be configured to output only certain columns, as needed.
+A special **final** aggregator with no outputs is used for the results of the
 query/statement.
 
-Some aggregators have an *ordering requirement* (`Limit`, `Final`) on the input
+Some aggregators (limit, `final`) have an *ordering requirement* on the input
 stream (a list of columns with corresponding ascending/descending requirements).
-Some nodes (like `TableReader`) can guarantee a certain ordering on their output
+Some nodes (like table readers) can guarantee a certain ordering on their output
 stream, called an *ordering guarantee* (same as the `orderingInfo` in the
 current code). All nodes in the logical plan have an associated *ordering
 characterization* function that maps an ordering guarantee on the input stream
 into an ordering guarantee for the output stream - meaning that if the input is
 ordered according to the input guarantee, the output guarantee will hold.
 
-The ordering guarantee of the `TableReader`s along with the characterization
+The ordering guarantee of the table readers along with the characterization
 functions can be used to propagate ordering information across the logical plan.
 When there is a mismatch (an aggregator has an ordering requirement that is not
-matched by a guarantee), we insert a *sorting node* - this is an aggregator with
-output schema identical to the input schema that reorders the elements in the
-input stream providing a certain output order guarantee regardless of the input
-ordering. Like a program, the sorting node is a non-grouping aggregator.  We can
-perform optimizations wrt sorting at the logical plan level - we could
+matched by a guarantee), we insert a **sorting node** - this is an aggregator
+with output schema identical to the input schema that reorders the elements in
+the input stream providing a certain output order guarantee regardless of the
+input ordering. Like a program, the sorting node is a non-grouping aggregator.
+We can perform optimizations wrt sorting at the logical plan level - we could
 potentially put the sorting node earlier in the pipeline, or split it into
-multiple nodes with one that performs preliminary sorting in an earlier stage.
+multiple nodes (one of which performs preliminary sorting in an earlier stage).
 
-To introduce the main types of aggregators we will make use of a sample query.
+To introduce the main types of aggregators we use of a simple query.
 
 ### Example 1
 
@@ -227,22 +237,15 @@ SELECT CID, SUM(VALUE) FROM Orders
   ORDER BY 1 - SUM(Value)
 ```
 
-Here is a potential description of the aggregators and how they are "connected":
+This is a potential description of the aggregators and streams:
 
 ```
-TABLEREADER src
+TABLE-READER src
   Table: Orders
-  Output schema: Oid:INT, Cid:INT, Value:DECIMAL, Date:DATE
+  Table schema: Oid:INT, Cid:INT, Value:DECIMAL, Date:DATE
+  Output filter: (Date > 2015)
+  Output schema: Cid:INT, Value:DECIMAL
   Ordering guarantee: Oid
-
-PROGRAM filter
-  Input schema: Oid:INT, Cid:INT, Value:DECIMAL, Date:DATE
-  Output schema: Cid, Value
-  Ordering characterization: if input ordered by Cid[,Value] output ordered by Cid[,Value]
-  SQL Expressions: E(x:DATE) BOOL = (x > 2015)
-  Code {
-    IF E(Date) EMIT Cid, Value
-  }
 
 AGGREGATOR summer
   Input schema: Cid:INT, Value:DECIMAL
@@ -264,17 +267,17 @@ AGGREGATOR final:
   Input ordering requirement: SortVal
   Group Key: none
 
-Composition: src -> filter -> summer -> sortval -> final
+Composition: src -> summer -> sortval -> final
 ```
 
 Note that the logical description does not include sorting nodes. This
-preliminary plan will lead to a full logical plan (with any necessary sorting
-nodes) when we propagate ordering information. We will have to insert a sorting
-node before `final`:
+preliminary plan will lead to a full logical plan (that includes any necessary
+sorting nodes) when we propagate ordering information. We will have to insert a
+sorting node before `final`:
 ```
-src -> filter -> summer -> sortval -> sort(OrderSum) -> final
+src -> summer -> sortval -> sort(OrderSum) -> final
 ```
-This is the complete logical plan.
+Each arrow is a logical stream. This is the complete logical plan.
 
 In this example we only had one option for the sorting node. Let's look at
 another example.
@@ -292,6 +295,7 @@ Preliminary logical plan description:
 ```
 TABLEREADER src
   Table: People
+  Table schema: Age:INT, NetWorth:DECIMAL
   Output schema: Age:INT, NetWorth:DECIMAL
   Ordering guarantee: XXX  // will consider different cases later
 
@@ -350,45 +354,32 @@ SELECT COUNT(DISTINCT(account)) FROM v
 ```
 TABLEREADER src
   Table: v
+  Table schema: Name:STRING, Age:INT, Account:INT
+  Filter: (Age > 10 AND Age < 30)
   Output schema: Name:STRING, Age:INT, Account:INT
   Ordering guarantee: Name
 
-PROGRAM filter1
-  Input schema: Name:String, Age:INT, Account:INT
-  Output schema: Name:String, Age:INT, Account:INT
-  Ordering characterization: preserves any ordering
-  SQL Expressions: E(x:INT) BOOL = (x > 10 AND x < 30) 
-  Code {
-    IF E(Age) EMIT Name, Age, Account
-  }
-
 AGGREGATOR countdistinctmin
   Input schema: Name:String, Age:INT, Account:INT
-  Output schema: AcctCount:INT, MinName:STRING
   Group Key: Age
-  Ordering characterization: if input ordered by Age, output ordered by Age
-
-PROGRAM filter2
-  Input schema: AcctCount:INT, MinName:STRING
+  Group results: distinct count as AcctCount:INT
+                 MIN(Name) as MinName:STRING
+  Output filter: (MinName > 'k')
   Output schema: AcctCount:INT
-  Ordering characterization: preserves any ordering on AcctCount
-  SQL Expressions: E(x:STRING) BOOL = (MinName > 'k')
-  Code {
-    IF E(MinName) EMIT AcctCount
-  }
+  Ordering characterization: if input ordered by Age, output ordered by Age
 
 AGGREGATOR final:
   Input schema: AcctCount:INT
   Input ordering requirement: none
   Group Key: none
 
-Composition: src -> filter1 -> countdistinctmin -> filter2 -> final
+Composition: src -> countdistinctmin -> final
 ```
 
 ## From logical to physical
 
-To distribute the computation that was described in terms of single streams, we
-use the following facts:
+To distribute the computation that was described in terms of aggregators and
+logical streams, we use the following facts:
 
  - for any aggregator, groups can be partitioned into subsets and processed in
    parallel, as long as all processing for a group happens on a single node.
@@ -396,24 +387,26 @@ use the following facts:
  - the ordering characterization of a logical node applies to *any* input stream
    with a certain ordering; it is useful even when we have multiple parallel
    instances of computation for that logical node: if the physical input streams
-   in all the parallel instances are ordered according to the guarantee in the
-   logical plan, the physical output streams in all instances will have the
-   output guarantee of the logical stream. If at some later node these streams
-   are merged into a single stream, that physical stream will have the correct
-   ordering, that of the corresponding logical stream.
+   in all the parallel instances are ordered according to the logical input
+   stream guarantee (in the logical plan), the physical output streams in all
+   instances will have the output guarantee of the logical output stream. If at
+   some later node these streams are merged into a single stream, that physical
+   stream will have the correct ordering - that of the corresponding logical
+   stream.
 
- - aggregators with empty group keys (`Limit`, `Final`) must have their final
+ - aggregators with empty group keys (`limit`, `final`) must have their final
    processing on a single node (they can however have preliminary distributed
    stages).
 
 So each logical aggregator can correspond to multiple distributed instances, and
-each stream in the logical plan can correspond to multiple physical streams
-**with the same ordering guarantees**.
+each logical stream can correspond to multiple physical streams **with the same
+ordering guarantees**.
 
 We can distribute using a few simple rules:
 
- - every TableReader will have multiple instances, split according to the
-   ranges; each instance is the start of a stream.
+ - table readers have multiple instances, split according to the ranges; each
+   instance is processed by the raft leader of the relevant ranges and is the
+   start of a physical stream.
 
  - streams continue in parallel through programs. When an aggregator is reached,
    the streams can be redistributed to an arbitrary number of instances using
@@ -427,30 +420,24 @@ We can distribute using a few simple rules:
    results into a single node. This is implicit from the fact that (like
    programs) it requires no grouping.
 
-It is important to note that correctly distributing the work across ranges is
-not necessary for correctness - if a range gets split or moved while we are
-planning the query, it will not cause incorrect results. Some key reads might be
-slower because they actually happen remotely, but as long as *most of the time,
-most of the keys* are read locally this should not be a problem.
+It is important to note that correctly distributing the work along range
+boundaries is not necessary for correctness - if a range gets split or moved
+while we are planning the query, it will not cause incorrect results. Some key
+reads might be slower because they actually happen remotely, but as long as
+*most of the time, most of the keys* are read locally this should not be a
+problem.
 
 Assume that we run the Example 1 query on a **Gateway** node and the table has
 data that on two nodes **A** and **B** (i.e. these two nodes are masters for all
 the relevant range). The logical plan is:
 
 ```
-TABLEREADER src
+TABLE-READER src
   Table: Orders
-  Output schema: Oid:INT, Cid:INT, Value:DECIMAL, Date:DATE
+  Table schema: Oid:INT, Cid:INT, Value:DECIMAL, Date:DATE
+  Output filter: (Date > 2015)
+  Output schema: Cid:INT, Value:DECIMAL
   Ordering guarantee: Oid
-
-PROGRAM filter
-  Input schema: Oid:INT, Cid:INT, Value:DECIMAL, Date:DATE
-  Output schema: Cid, Value
-  Ordering characterization: if input ordered by Cid[,Value] output ordered by Cid[,Value]
-  SQL Expressions: E(x:DATE) BOOL = (x > 2015)
-  Code {
-    IF E(Date) EMIT Cid, Value
-  }
 
 AGGREGATOR summer
   Input schema: Cid:INT, Value:DECIMAL
@@ -466,11 +453,6 @@ PROGRAM sortval
   Code {
     EMIT E(ValueSum), CId, ValueSum
   }
-
-AGGREGATOR final:
-  Input schema: SortVal:DECIMAL, Cid:INT, ValueSum:DECIMAL
-  Input ordering requirement: SortVal
-  Group Key: none
 ```
 
 ![Logical plan](distributed_sql_logical_plan.png?raw=true "Logical Plan")
@@ -479,18 +461,18 @@ This logical plan above could be instantiated as the following physical plan:
 
 ![Physical plan](distributed_sql_physical_plan.png?raw=true "Physical Plan")
 
-Each box is a *processor*:
- - `src` is a TableReader and performs KV Get operations and forms rows; it is
-   programmed to read the spans that belong to the respective node.
- - Each instance of the program `filter` evaluates the `Date > 2015` expression
-   and conditionally emits a data element.
+Each box in the physical plan is a *processor*:
+ - `src` is a table reader and performs KV Get operations and forms rows; it is
+   programmed to read the spans that belong to the respective node. It evaluates
+   the `Date > 2015` filter before outputting data elements.
  - `summer-stage1` is the first stage of the `summer` aggregator; its purpose is
    to do the aggregation it can do locally and distribute the partial results to
    the `summer-stage2` processes, such that all values for a certain group key
    (`CId`) reach the same process (by hashing `CId` to one of two "buckets").
  - `summer-stage2` performs the actual sum and outputs the index (`CId`) and
    corresponding sum.
- - `sortval` calculates and emits the additional `SortVal` value, along with the `CId` and `ValueSum`
+ - `sortval` calculates and emits the additional `SortVal` value, along with the
+   `CId` and `ValueSum`
  - `sort` sorts the stream according to `SortVal`
  - `final` merges the two input streams of data to produce the final sorted
    result.
@@ -505,7 +487,7 @@ The processors always form a directed acyclic graph.
 
 ### Processors
 
-Processors are made up of three components:
+Processors are generally made up of three components:
 
 ![Processor](distributed_sql_processor.png?raw=true "Processor")
 
@@ -514,12 +496,12 @@ Processors are made up of three components:
    * single-input (pass-through)
    * unsynchronized: passes data elements from all input streams, arbitrarily
      interleaved.
-   * ordered: input streams are sorted according to some part of the data; the
-     synchronizer is careful to interleave the streams so that the output is
-     sorted.
+   * ordered: the input physical streams have an ordering guarantee (namely the
+     guarantee of the correspondig locical stream); the synchronizer is careful
+     to interleave the streams so that the merged stream has the same guarantee.
 
 2. The *data processor* core implements the data transformation or aggregation
-   logic.
+   logic (and in some cases performs KV operations).
 
 3. The *output router* splits the data processor's output to multiple streams;
    types:
@@ -527,6 +509,7 @@ Processors are made up of three components:
    * mirror: every data element is sent to all output streams
    * hashing: each data element goes to a single output stream, chosen according
      to a hash function applied on certain elements of the data tuples.
+   * by range: TODO (for index-join)
 
 ### Inter-stream ordering
 
@@ -537,7 +520,7 @@ of logical or physical plans.**
 Consider this example:
 ```sql
 TABLE t (k INT PRIMARY KEY, v INT)
-SELECT k, v FROM t WHERE k+v>10 ORDER BY k
+SELECT k, v FROM t WHERE k + v > 10 ORDER BY k
 ```
 
 This is a simple plan:
@@ -545,41 +528,69 @@ This is a simple plan:
 ```
 READER src
   Table: t
+  Output filter: (k + v > 10)
   Output schema: k:INT, v:INT
   Ordering guarantee: k
-
-PROGRAM filter
-  Input schema: k:INT, v:INT
-  Output schema: k:INT, v:INT
-  Ordering characterization: preserves any ordering
-  SQL Expressions: E(x, y) BOOL = (x + y > 10)
-  Code {
-    IF E(k, v) EMIT k, v
-  }
 
 AGGREGATOR final:
   Input schema: k:INT, v:INT
   Input ordering requirement: k
   Group Key: none
 
-Composition: src -> filter -> final
+Composition: src -> final
 ```
 
-Now let's say that the table spans two ranges on two different nodes - one range for keys `k <= 10` and one range for keys `k > 10`. In the physical plan we would have two streams starting from two readers; the streams get merged into a single stream before `final`. But in this case, we know that *all* elements in one stream are ordered before *all* elements in the other stream - we say that we have an **inter-stream ordering**. We can be more efficient when merging (before `final`): we simply read all elements from the first stream and then all elements from the second stream. Moreover, we would also know that the reader (and any other processing elements) for the second stream don't need to be scheduled until the first reader runs, which may be useful information for the scheduling algorithms.
+Now let's say that the table spans two ranges on two different nodes - one range
+for keys `k <= 10` and one range for keys `k > 10`. In the physical plan we
+would have two streams starting from two readers; the streams get merged into a
+single stream before `final`. But in this case, we know that *all* elements in
+one stream are ordered before *all* elements in the other stream - we say that
+we have an **inter-stream ordering**. We can be more efficient when merging
+(before `final`): we simply read all elements from the first stream and then all
+elements from the second stream. Moreover, we would also know that the reader
+and other processors for the second stream don't need to be scheduled until the
+first stream is consumed, which may be useful information for the scheduling
+algorithms.
 
-We add the concept of inter-physical-stream ordering to the logical plan - it is a property of a logical stream (even if it refers to multiple physical streams that could be associated with that logical stream). We annotate all logical nodes with an **inter-stream ordering characterization function** (similar to the ordering characterization described above, which can be thought of as "intra-stream" ordering). The inter-stream ordering function maps an input ordering to an output ordering, with the meaning that if the physical streams that are inputs to distributed instances of that aggregator have the inter-stream ordering described by input, then the output streams have the given output ordering.
+We add the concept of inter-physical-stream ordering to the logical plan - it is
+a property of a logical stream (even though it refers to multiple physical
+streams that could be associated with that logical stream). We annotate all
+logical nodes with an **inter-stream ordering characterization function**
+(similar to the ordering characterization described above, which can be thought
+of as "intra-stream" ordering). The inter-stream ordering function maps an input
+ordering to an output ordering, with the meaning that if the physical streams
+that are inputs to distributed instances of that aggregator have the
+inter-stream ordering described by input, then the output streams have the given
+output ordering.
 
-Like the intra-stream ordering information, we can propagate the inter-stream ordering information starting from the table readers onward. The streams coming out of a table reader have an inter-stream order if the spans each reader "works on" have a total order (this is always the case if each table reader is associated to a separate range).
+Like the intra-stream ordering information, we can propagate the inter-stream
+ordering information starting from the table readers onward. The streams coming
+out of a table reader have an inter-stream order if the spans each reader "works
+on" have a total order (this is always the case if each table reader is
+associated to a separate range).
 
-The information can be used to apply the optimization above - if a logical stream has an appropriate associated inter-stream ordering, the merging of the physical streams can happen by reading the streams sequentially. The same information can be used for any scheduling optimizations.
+The information can be used to apply the optimization above - if a logical
+stream has an appropriate associated inter-stream ordering, the merging of the
+physical streams can happen by reading the streams sequentially. The same
+information can be used for any scheduling optimizations.
 
+TODO some examples, especially one where the intra-stream and inter-stream
+orderings are different and yet eventually useful:
+`(SELECT k, v FROM k ORDER BY v LIMIT 100) ORDER by k`.
 
 # Implementation strategy
 
+Three streams:
+ - implementing the physical building blocks (processors, synchronizers,
+   routers)
+ - physical planning and distribution logic
+ - scheduling and resource management within a single node
+
 # KV Layer requirements
 
-distributed txn coord (read and writes)
-figuring out how ranges are distributed
+Distributed txn coord (read and writes)
+
+Figuring out how ranges are distributed
 
 # Alternatives
 
