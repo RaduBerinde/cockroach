@@ -627,6 +627,115 @@ TODO some examples, especially one where the intra-stream and inter-stream
 orderings are different and yet eventually useful:
 `(SELECT k, v FROM k ORDER BY v LIMIT 100) ORDER by k`.
 
+## Execution infrastructure
+
+Once a physical plan has been generated, the system needs to divvy it up
+between the nodes and send it around for execution. Each node is responsible
+for locally scheduling data processors and input synchronizers. Nodes also need
+to be able to communicate with each other for connecting output routers to
+input synchronizers. In particular, a streaming interface is needed for
+connecting these actors. To avoid paying extra synchronization costs, the
+execution environment providing all these needs to be flexible enough so that
+different nodes can start executing their pieces in isolation, without any
+orchestration from the gateway besides the initial request to schedule a part
+of the plan.
+
+### Creating a local plan: the `ScheduleFlows` RPC
+
+Distributed execution starts with the gateway making a request to every node
+that's supposed to execute part of the plan asking the node to schedule the
+sub-plan(s) it's responsible for. A node might be responsible for multiple
+disparate pieces of the overall DAG. Let's call each of them a *flow*. A flow
+is described by the sequence of physical plan nodes in it, the connections
+between them (input synchronizers, output routers) plus identifiers for the
+input streams of the top node in the plan and the output streams of the
+(possibly multiple) bottom nodes. A node might be responsible for multiple
+heterogeneous flows. More commonly, when a node is the leader for multiple
+ranges from the same table involved in the query, it will be responsible for a
+set of homogeneous flows, one per range, all starting with a `TableReader`
+processor. We might optimize the format of the flow description to efficiently
+encode such homogeneous flows. All flows in such a homogeneous set will
+identify the same mailbox as the output stream (i.e. if a node is the leader
+for a million ranges, we don't want to set up a million mailboxes). TODO
+however a single one might be too restrictive, for example we might one per
+storage device, or one per CPU. Although this decision might better be taken at
+physical plan creation stage.
+
+A node therefore implements a `SchedulePlan` RPC which takes a set of flows,
+sets up the input and output mailboxes (see below), creates the local
+processors and starts their execution. We might imagine at some point
+implementing admission control for flows at the node boundary, in which case
+the RPC response would have the option to push back on the volume of work
+that's being requested.
+
+### Local scheduling of flows
+
+Upon receiving a `ScheduleFlows` request, a node needs to decide what flows to
+execute sequentially or in parallel. A simple strategy is to execute
+heterogeneous flows in parallel and homogeneous ones sequentially. For a
+sequence of flows to be scheduled sequentially, we'd have one goroutine
+representing the whole sequence, going through the sequence and creating the
+environment for one flow at a time.
+
+Within a single flow, the same decision needs to be made for the scheduling of
+the different processors. A simple strategy is to schedule everything
+concurrently, except groups of `TableReader`s feeding into the same consumer,
+which we schedule sequentially.  
+Each data processor, synchronizer and router can be run as a goroutine, with
+channels between them. The channels can be buffered to synchronize producers
+and consumers to a controllable degree. Note that whatever fusing of processors
+can be done should have already been performed when the physical plan was being
+constructed, so the node gets "optimized" flows.
+
+### Mailboxes
+
+Flows on different nodes communicate with each other over GRPC streams. To
+allow the producer and the consumer to start at different times,
+`ScheduleFlows` creates named mailboxes for all the input and output streams.
+These message boxes will hold some number of tuples in an internal queue until
+a GRPC stream is established for transporting them. From that moment on, GRPC
+flow control is used to synchronize the producer and consumer.  
+A GRPC stream is established by the consumer using the `StreamMailbox` RPC,
+taking a mailbox id (the same one that's been already used in the flows passed
+to `ScheduleFlows`). This call might arrive to a node even before the
+corresponding `ScheduleFlows` arrives. In this case, the mailbox is created on
+the fly, in the hope that the `ScheduleFlows` will follow soon. If that doesn't
+happen within a timeout, the mailbox is retired.
+Mailboxes present a channel interface to the local processors.
+
+A diagram of a simple query using mailboxes for its execution:
+![Mailboxes](execution_environment.png?raw=true)
+
+## Retiring flows
+
+Processors and mailboxes needs to be destroyed at some point. This happens
+under a number of circumstances:
+
+1. A processor retires when it receives a sentinel on all of its input streams
+   and has outputted the last tuple (+ a sentinel) on all of its output
+   streams.
+2. A processor retires once either one of its input or output streams is
+   closed. This can be used by a consumer to inform its producers that it's
+   gotten all the data it needs.
+3. An input mailbox retires once it has put the sentinel on the wire or once
+   its GRPC stream is closed remotely.
+4. An output mailbox retires once it has passed on the sentinel to the reader,
+   which it does once all of its input channels are closed (remember that an
+   output mailbox may receive input from many channels, one per member of a
+   homogeneous flow family). It also retires if its GRPC stream is closed
+   remotely.
+5. `TableReader` retires once it has delivered the last tuple in its range (+ a
+   sentinel).
+
+Cancelling a running query can be done by asking the `final` processor to close
+its input channel. This close will propagate backwards to all plan nodes.
+
+# KV Layer requirements
+
+distributed txn coord (read and writes)
+streaming interface for the range scan underlying the TableReader?
+>>>>>>> Add an "Execution environment" section.
+
 # Implementation strategy
 
 There are five streams of work. We keep in mind two initial milestones to track
