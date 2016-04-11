@@ -533,7 +533,10 @@ Processors are generally made up of three components:
    * mirror: every data element is sent to all output streams
    * hashing: each data element goes to a single output stream, chosen according
      to a hash function applied on certain elements of the data tuples.
-   * by range: TODO (for index-join)
+   * by range: routes the tuples according to the leadership of KV ranges.
+     Useful for routing data into (for `JoinReader` nodes (taking index values
+     to the node responsible for the PK) and `INSERT` (taking new rows to their
+     leader-to-be)).
 
 ### Inter-stream ordering
 
@@ -607,6 +610,79 @@ TODO some examples, especially one where the intra-stream and inter-stream
 orderings are different and yet eventually useful:
 `(SELECT k, v FROM k ORDER BY v LIMIT 100) ORDER by k`.
 
+# A more complex example: Daily Promotion
+
+Let's draw a possible logical and physical plan for a more complex query. The
+point of the query is to help with a promotion that goes out daily, targetting
+customers that have spent over $1000 in the last year. We'll insert into the
+`DailyPromotion` table rows representing each such customer and the sum of her
+recent orders.
+
+```SQL
+INSERT INTO DailyPromotion FROM
+  (SELECT c.email, c.name, OrderCount from Customers INNER JOIN 
+    (SELECT CustomerID as ID, COUNT(*) as OrderCount, SUM(OrderValue) as OrderSum
+        FROM  Orders WHERE OrderDate > (one year ago)
+        GROUP BY CustomerID HAVING OrderSum > 1000) on ID
+```
+
+Logical plan:
+
+```
+TABLE-READER orders-by-date
+  Table: Orders@OrderByDate /2015-01-01 - 
+  Input schema: Date: Datetime, OrderID: INT
+  Output schema: Cid:INT, Value:DECIMAL
+  Output filter: None (the filter has been turned into a scan range)
+  Intra-stream ordering characterization: Date
+  Inter-stream ordering characterization: Date
+
+JOIN-READER orders
+  Table: Orders
+  Input schema: Oid:INT, Date:DATETIME
+  Output filter: None
+  Output schema: Cid:INT, Date:DATETIME, Value:INT
+  // TODO: The ordering characterizations aren't necesary necessary in this example
+  // and we might get better performance if we remove it and let the aggregator
+  // emit results out of order. Update after the  section on backpropagation of
+  // ordering requirements.
+  Intra-stream ordering characterization: same as input 
+  Inter-stream ordering characterization: Oid
+
+AGGREGATOR count-and-sum
+  Input schema: CustomerID:INT, Value:INT
+  Aggregation: SUM(Value) as sumval:INT
+               COUNT(*) as OrderCount:INT
+  Group key: CustomerID
+  Output schema: CustomerID:INT, OrderCount:INT
+  Output filter: sumval >= 1000
+  Intra-stream ordering characterization: None
+  Inter-stream ordering characterization: None
+
+JOIN-READER customers
+  Table: Customers
+  Input schema: CustomerID:INT, OrderCount: INT
+  Output schema: e-mail: TEXT, Name: TEXT, OrderCount: INT
+  Output filter: None
+  // TODO: The ordering characterizations aren't necesary necessary in this example
+  // and we might get better performance if we remove it and let the aggregator
+  // emit results out of order. Update after the  section on backpropagation of
+  // ordering requirements.
+  Intra-stream ordering characterization: same as input 
+  Inter-stream ordering characterization: same as input
+
+INSERT inserter
+  Table: DailyPromotion
+  Input schema: email: TEXT, name: TEXT, OrderCount: INT
+  Table schema: email: TEXT, name: TEXT, OrderCount: INT
+
+Composition: order-by-date -> orders -> count-and-sum -> customers -> inserter
+```
+
+A possible physical plan:
+![Physical plan](DailyPromotion-physical_plan.png.png?raw=true)
+
+
 # Implementation strategy
 
 Three streams:
@@ -619,7 +695,7 @@ Three streams:
 
 Distributed txn coord (read and writes)
 
-Figuring out how ranges are distributed
+Figuring out how ranges are distributed (for the `by range` output router).
 
 # Alternatives
 
