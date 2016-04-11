@@ -213,15 +213,16 @@ The grouping characteristic will be useful when we later decide how to
 distribute the computation that is represented by an aggregator: since results
 for each group are independent, different groups can be processed on different
 nodes. The more groups we have, the better. At one end of the spectrum there are
-single-group aggregators (group key is the empty set of columns, meaning
-everything is in the same group) which cannot be distributed. At the other end
-there are no-grouping aggregators which can be parallelized arbitrarily. Note
-that no-grouping aggregators are different than aggregators where the group key
-is the full set of columns - the latter still requires rows that are equal to be
-processed on a single node (this would be useful for an aggregator implementing
-`UNIQUE` for example). An aggregator with no grouping is a special but important
-case in which we are not aggregating multiple pieces of data, but we may be
-filtering, transforming, or reordering individual pieces of data.
+single-group aggregators (group key is the empty set of columns - `Group key:
+[]`, meaning everything is in the same group) which cannot be distributed. At
+the other end there are no-grouping aggregators which can be parallelized
+arbitrarily. Note that no-grouping aggregators are different than aggregators
+where the group key is the full set of columns - the latter still requires rows
+that are equal to be processed on a single node (this would be useful for an
+aggregator implementing `UNIQUE` for example). An aggregator with no grouping
+is a special but important case in which we are not aggregating multiple pieces
+of data, but we may be filtering, transforming, or reordering individual pieces
+of data.
 
 Aggregators can make use of SQL expressions, evaluating them with various inputs
 as part of their work. In particular, all aggregators can optionally use an
@@ -309,7 +310,7 @@ PROGRAM sortval
 AGGREGATOR final:
   Input schema: SortVal:DECIMAL, Cid:INT, ValueSum:DECIMAL
   Input ordering requirement: SortVal
-  Group Key: none
+  Group Key: []
 
 Composition: src -> summer -> sortval -> final
 ```
@@ -351,7 +352,7 @@ AGGREGATOR summer
 AGGREGATOR final:
   Input schema: Age:INT, NetWorthSum:DECIMAL
   Input ordering requirement: Age
-  Group Key: none
+  Group Key: []
 
 Composition: src -> summer -> final
 ```
@@ -421,7 +422,7 @@ AGGREGATOR countdistinctmin
 AGGREGATOR final:
   Input schema: AcctCount:INT
   Input ordering requirement: none
-  Group Key: none
+  Group Key: []
 
 Composition: src -> countdistinctmin -> final
 ```
@@ -559,7 +560,10 @@ Processors are generally made up of three components:
    * mirror: every row is sent to all output streams
    * hashing: each row goes to a single output stream, chosen according
      to a hash function applied on certain elements of the data tuples.
-   * by range: TODO (for index-join)
+   * by range: routes the tuples according to the leadership of KV ranges.
+     Useful for routing data into (for `JoinReader` nodes (taking index values
+     to the node responsible for the PK) and `INSERT` (taking new rows to their
+     leader-to-be)).
 
 ### Inter-stream ordering
 
@@ -584,7 +588,7 @@ READER src
 AGGREGATOR final:
   Input schema: k:INT, v:INT
   Input ordering requirement: k
-  Group Key: none
+  Group Key: []
 
 Composition: src -> final
 ```
@@ -746,10 +750,112 @@ under a number of circumstances:
 Cancelling a running query can be done by asking the `final` processor to close
 its input channel. This close will propagate backwards to all plan nodes.
 
-# KV Layer requirements
+# A more complex example: Daily Promotion
 
-distributed txn coord (read and writes)
-streaming interface for the range scan underlying the TableReader?
+Let's draw a possible logical and physical plan for a more complex query. The
+point of the query is to help with a promotion that goes out daily, targetting
+customers that have spent over $1000 in the last year. We'll insert into the
+`DailyPromotion` table rows representing each such customer and the sum of her
+recent orders.
+
+```SQL
+TABLE DailyPromotion (
+  Email TEXT,
+  Name TEXT,
+  OrderCount INT
+)
+
+TABLE Customers (
+  CustomerID INT PRIMARY KEY,
+  Email TEXT, 
+  Name TEXT
+)
+
+TABLE Orders (
+  CustomerID INT,   
+  Date DATETIME,
+  Value INT,
+
+  PRIMARY KEY (CustomerID, Date), 
+  INDEX date (Date)
+)
+
+INSERT INTO DailyPromotion
+(SELECT c.Email, c.Name, os.OrderCount FROM
+      Customers AS c
+    INNER JOIN
+      (SELECT CustomerID, COUNT(*) as OrderCount FROM Orders
+        WHERE Date >= '2015-01-01'
+        GROUP BY CustomerID HAVING SUM(Value) >= 1000) AS os
+    ON c.CustomerID = os.CustomerID)
+```
+
+Logical plan:
+
+```
+TABLE-READER orders-by-date
+  Table: Orders@OrderByDate /2015-01-01 - 
+  Input schema: Date: Datetime, OrderID: INT
+  Output schema: Cid:INT, Value:DECIMAL
+  Output filter: None (the filter has been turned into a scan range)
+  Intra-stream ordering characterization: Date
+  Inter-stream ordering characterization: Date
+
+JOIN-READER orders
+  Table: Orders
+  Input schema: Oid:INT, Date:DATETIME
+  Output filter: None
+  Output schema: Cid:INT, Date:DATETIME, Value:INT
+  // TODO: The ordering characterizations aren't necesary necessary in this example
+  // and we might get better performance if we remove it and let the aggregator
+  // emit results out of order. Update after the  section on backpropagation of
+  // ordering requirements.
+  Intra-stream ordering characterization: same as input 
+  Inter-stream ordering characterization: Oid
+
+AGGREGATOR count-and-sum
+  Input schema: CustomerID:INT, Value:INT
+  Aggregation: SUM(Value) as sumval:INT
+               COUNT(*) as OrderCount:INT
+  Group key: CustomerID
+  Output schema: CustomerID:INT, OrderCount:INT
+  Output filter: sumval >= 1000
+  Intra-stream ordering characterization: None
+  Inter-stream ordering characterization: None
+
+JOIN-READER customers
+  Table: Customers
+  Input schema: CustomerID:INT, OrderCount: INT
+  Output schema: e-mail: TEXT, Name: TEXT, OrderCount: INT
+  Output filter: None
+  // TODO: The ordering characterizations aren't necesary necessary in this example
+  // and we might get better performance if we remove it and let the aggregator
+  // emit results out of order. Update after the section on backpropagation of
+  // ordering requirements.
+  Intra-stream ordering characterization: same as input 
+  Inter-stream ordering characterization: same as input
+
+INSERT inserter
+  Table: DailyPromotion
+  Input schema: email: TEXT, name: TEXT, OrderCount: INT
+  Table schema: email: TEXT, name: TEXT, OrderCount: INT
+
+INTENT-COLLECTOR intent-collector
+  Group key: []
+  Input schema: k: TEXT, v: TEXT
+
+AGGREGATOR final:
+  Input schema: rows-inserted:INT 
+  Aggregation: SUM(rows-inserted) as rows-inserted:INT
+  Group Key: []
+
+Composition: 
+order-by-date -> orders -> count-and-sum -> customers -> inserter -> intent-collector
+                                                                  \-> final (sum)
+```
+
+A possible physical plan:
+![Physical plan](distributed_sql_daily_promotion_physical_plan.png?raw=true)
 
 # Implementation strategy
 
@@ -858,6 +964,8 @@ KV integration involves three aspects:
 
 The details of all these need to be further investigated. Only 1 and 2 are
 required for M1; 3 is required for M2.
+
+TODO: Do we also need streaming reads from KV for `TableReader`?
 
 # Alternatives
 
