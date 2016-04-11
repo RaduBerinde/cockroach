@@ -675,12 +675,16 @@ execute sequentially or in parallel. A simple strategy is to execute
 heterogeneous flows in parallel and homogeneous ones sequentially. For a
 sequence of flows to be scheduled sequentially, we'd have one goroutine
 representing the whole sequence, going through the sequence and creating the
-environment for one flow at a time.
+environment for one flow at a time. The scheduling order within this
+sequential sequence needs to take into account the ordering requirements (if
+any) of the stream that will be produced by the single mailbox that all the
+flows in the sequence feed into.
 
 Within a single flow, the same decision needs to be made for the scheduling of
 the different processors. A simple strategy is to schedule everything
 concurrently, except groups of `TableReader`s feeding into the same consumer,
-which we schedule sequentially.  
+which we schedule sequentially (note that multiple `TableReader`s feeding into
+an aggregator represents a single flow, not a set of homogeneous ones).  
 Each data processor, synchronizer and router can be run as a goroutine, with
 channels between them. The channels can be buffered to synchronize producers
 and consumers to a controllable degree. Note that whatever fusing of processors
