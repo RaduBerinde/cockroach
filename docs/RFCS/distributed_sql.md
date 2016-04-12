@@ -609,17 +609,109 @@ orderings are different and yet eventually useful:
 
 # Implementation strategy
 
-Three streams:
- - implementing the physical building blocks (processors, synchronizers,
-   routers)
- - physical planning and distribution logic
- - scheduling and resource management within a single node
+There are five streams of work. We keep in mind two initial milestones to track
+the extent of progress we must achieve within each stream:
+- Milestone M1: offloading filters to remote side
+- Milestone M2: offloading updates to remote side
 
-# KV Layer requirements
+## Logical planning
 
-Distributed txn coord (read and writes)
+Building a logical plan for a statement involves many aspects:
+ - index selection
+ - query optimization
+ - choosing between various strategies for sorting, aggregation
+ - choosing between join strategies
 
-Figuring out how ranges are distributed
+This is a very big area where we will see a long tail of improvements over time.
+However, we can start with a basic implementation based on the existing code.
+For a while we can use a hybrid approach where we implement table reading and
+filtering using the new framework and make the results accessible via a
+`planNode` so we can use the existing code for everything else. This would be
+sufficient for M1. The next stage would be implementing the mutation aggregators
+and refactoring the existing code to allow using them (enabling M2).
+
+## Physical planning
+
+A lot of the decisions in the physical planning stage are "forced" - table
+readers are distributed according to ranges, and much of the physical planning
+follows from that.
+
+One place where physical planning involves difficult decisions is when
+distributing the second stage of an aggregation or join - we could set up any
+number of "buckets" (and subsequent flows) on any nodes. E.g. see the `summer`
+example. Fortunately there is a simple strategy we can start with - use as many
+buckets as input flows and distribute them among the same nodes. This strategy
+scales well with the query size: if a query draws data from a single node, we
+will do all the aggregation on that node; if a query draws data from many nodes,
+we will distribute the aggregation among those nodes. 
+
+A "stage 2" refinement to this strategy is detecting when a computation (and
+subsequent stages) might be cheap enough to not need distribution, in which case
+we can perform the aggregation on the gateway node. Further improvements
+(statistics based) can be investigated later.
+
+## Processor infrastructure and implementing processors
+
+This involves building the framework within which we can run processors and
+implementing the various processors we need. We can start with the table readers
+(enough for M1). If necessary, this work stream can advance faster than the
+logical planning stream - we can build processors even if the logical plan isn't
+using them yet (as long as there is a good testing framework in place); we can
+also potentially use the implementations internally, hidden behind a `planNode`
+interface and running non-distributed.
+
+### Joins
+
+A tangential work stream is to make progress toward supporting joins (initially
+non-distributed). This involves building the processor that will be at the heart
+of the hash join implementation and integrating that code with the current
+`planNode` tree.
+
+## Scheduling
+
+The problem of efficiently queuing and scheduling processors will also involve a
+long tail of improvements. But we can start with a basic implementation using
+simple strategies:
+ - the queue ordering is by transactions; we don't order individual processors
+ - limit the number of transactions for which we run processors at any one time;
+   we can also limit the total number of processors running at any one time, as
+   long as we allow all the processors needed for at least one txn
+ - the txn queuing order is a function of the txn timestamp and its priority,
+   allowing the nodes to automatically agree on the relative ordering of
+   transactions, eliminating deadlock scenarios (example of a deadlock: txn A
+   has some processors running on node 1, and some processors on node 2 that are
+   queued behind running processors of txn B; and txn B also has some processors
+   that are queued behind txn A on node 1)
+
+We won't need anything fancier in this area to reach M1 and M2.
+
+## KV integration
+
+KV integration involves three aspects:
+
+1. Range information lookup
+
+   At the physical planning stage we need to map key spans into ranges and
+   determine who is the master for each range. The KV layer already caches this
+   kind of information, though we may need to be more aggressive in terms of how
+   much information we retain and how frequently we update it.
+
+2. Distributed reads
+
+   There is very little in the KV layer that needs to change to allow
+   distributed reads - they are currently prevented only because of a fix
+   involving detecting aborted transactions (PR #5323).
+
+3. Distributed writes
+
+   The txn coordinator currently keeps track of all the modified keys or key
+   ranges. The new sql distribution layer is designed to allow funneling the
+   modified key information back to the gateway node (which acts as the txn
+   coordinator). There will need to be some integration here, to allow us to
+   pass this information to the KV layer. There are also likely various cases
+   where checking for error cases must be relaxed.
+
+The details of all these need to be further investigated. Only 1 and 2 are required for M1; 3 is required for M2.
 
 # Alternatives
 
