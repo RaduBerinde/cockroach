@@ -711,10 +711,11 @@ KV integration involves three aspects:
 
 1. Range information lookup
 
-   At the physical planning stage we need to map key spans into ranges and
-   determine who is the master for each range. The KV layer already caches this
-   kind of information, though we may need to be more aggressive in terms of how
-   much information we retain and how frequently we update it.
+   At the physical planning stage we need to break up key spans into ranges and
+   determine who is the leader for each range. The KV layer already has a range
+   cache that maintains this information, but we will need to make changes to be
+   more aggressive in terms of how much information we maintain, and how we
+   invalidate/update it.
 
 2. Distributed reads
 
@@ -731,7 +732,8 @@ KV integration involves three aspects:
    pass this information to the KV layer. There are also likely various cases
    where checking for error cases must be relaxed.
 
-The details of all these need to be further investigated. Only 1 and 2 are required for M1; 3 is required for M2.
+The details of all these need to be further investigated. Only 1 and 2 are
+required for M1; 3 is required for M2.
 
 # Alternatives
 
@@ -835,7 +837,7 @@ This general approach can be used for distributed SQL operations as well as
 remote-side filtering and updates. The main drawback of this approach is that it
 is very general and not prescriptive on how to build reusable pieces of
 functionality. It is not clear how we could break apart the work in modular
-piece, and it has the potential of evolving into a monster of unmanageable
+pieces, and it has the potential of evolving into a monster of unmanageable
 complexity.
 
 
