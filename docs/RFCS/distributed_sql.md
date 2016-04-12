@@ -644,22 +644,21 @@ of the plan.
 
 Distributed execution starts with the gateway making a request to every node
 that's supposed to execute part of the plan asking the node to schedule the
-sub-plan(s) it's responsible for. A node might be responsible for multiple
-disparate pieces of the overall DAG. Let's call each of them a *flow*. A flow
-is described by the sequence of physical plan nodes in it, the connections
-between them (input synchronizers, output routers) plus identifiers for the
-input streams of the top node in the plan and the output streams of the
-(possibly multiple) bottom nodes. A node might be responsible for multiple
-heterogeneous flows. More commonly, when a node is the leader for multiple
-ranges from the same table involved in the query, it will be responsible for a
-set of homogeneous flows, one per range, all starting with a `TableReader`
-processor. We might optimize the format of the flow description to efficiently
-encode such homogeneous flows. All flows in such a homogeneous set will
-identify the same mailbox as the output stream (i.e. if a node is the leader
-for a million ranges, we don't want to set up a million mailboxes). TODO
-however a single one might be too restrictive, for example we might one per
-storage device, or one per CPU. Although this decision might better be taken at
-physical plan creation stage.
+sub-plan(s) it's responsible for (modulo "on-the-fly" flows, see below). A node
+might be responsible for multiple disparate pieces of the overall DAG. Let's
+call each of them a *flow*. A flow is described by the sequence of physical
+plan nodes in it, the connections between them (input synchronizers, output
+routers) plus identifiers for the input streams of the top node in the plan and
+the output streams of the (possibly multiple) bottom nodes. A node might be
+responsible for multiple heterogeneous flows. More commonly, when a node is the
+leader for multiple ranges from the same table involved in the query, it will
+be responsible for a set of homogeneous flows, one per range, all starting with
+a `TableReader` processor. In the beginning, we'll coalesce all these
+`TableReader`s into one, configured with all the spans to be read across all
+the ranges local to the node. This means that we'll lose the inter-stream
+ordering (since we've turned everything into a single stream). Later on we
+might move to having one `TableReader` per range, so that we can schedule
+multiple of them to run in parallel.
 
 A node therefore implements a `SchedulePlan` RPC which takes a set of flows,
 sets up the input and output mailboxes (see below), creates the local
@@ -670,26 +669,10 @@ that's being requested.
 
 ### Local scheduling of flows
 
-Upon receiving a `ScheduleFlows` request, a node needs to decide what flows to
-execute sequentially or in parallel. A simple strategy is to execute
-heterogeneous flows in parallel and homogeneous ones sequentially. For a
-sequence of flows to be scheduled sequentially, we'd have one goroutine
-representing the whole sequence, going through the sequence and creating the
-environment for one flow at a time. The scheduling order within this
-sequential sequence needs to take into account the ordering requirements (if
-any) of the stream that will be produced by the single mailbox that all the
-flows in the sequence feed into.
-
-Within a single flow, the same decision needs to be made for the scheduling of
-the different processors. A simple strategy is to schedule everything
-concurrently, except groups of `TableReader`s feeding into the same consumer,
-which we schedule sequentially (note that multiple `TableReader`s feeding into
-an aggregator represents a single flow, not a set of homogeneous ones).  
-Each data processor, synchronizer and router can be run as a goroutine, with
-channels between them. The channels can be buffered to synchronize producers
-and consumers to a controllable degree. Note that whatever fusing of processors
-can be done should have already been performed when the physical plan was being
-constructed, so the node gets "optimized" flows.
+The simplest way to schedule the different processors locally on a node is
+concurrently: each data processor, synchronizer and router can be run as a
+goroutine, with channels between them. The channels can be buffered to
+synchronize producers and consumers to a controllable degree.
 
 ### Mailboxes
 
@@ -705,10 +688,33 @@ to `ScheduleFlows`). This call might arrive to a node even before the
 corresponding `ScheduleFlows` arrives. In this case, the mailbox is created on
 the fly, in the hope that the `ScheduleFlows` will follow soon. If that doesn't
 happen within a timeout, the mailbox is retired.
-Mailboxes present a channel interface to the local processors.
+Mailboxes present a channel interface to the local processors.  
+If we move to a multiple `TableReader`s/flows per node, then we'd probably
+still want one single output mailbox for all the homogeneous flows (if
+a node has 1mil ranges, we don't want 1mil mailboxes/streams). At that point we
+might want to add tagging to the different streams entering the mailbox, so
+that the inter-stream ordering property can still be used by the consumer.
 
 A diagram of a simple query using mailboxes for its execution:
 ![Mailboxes](execution_environment.png?raw=true)
+
+### On-the-fly flows setup
+
+In a couple of cases, it seems like we don't want all the flows to be setup
+from the get-go. `PointLookup` and `Mutate` generally start one a few ranges
+and then send data to arbitrary nodes. The amount of data to be sent to each
+node will often be very small (e.g. `PointLookup` might perform a handful of
+lookups in total on table *A*, so we don't want to set up receivers for those
+lookups on all nodes containing ranges for table *A*. Instead, the physical
+plan will contain just one processor, making the `PointLookup` aggregator
+single-stage; this node can chose whether to perform KV operations directly to
+do the lookups (for ranges with few lookups), or setup remote flows on the fly
+using the `ScheduleFlows` RPC for ranges with tons of lookups. In this case,
+the idea is to push a bunch of the computation to the data, so the flow passed
+to `ScheduleFlows` will be a copy of the physical nodes downstream of the
+aggregator, including filtering and aggregation. We imagine the processor will
+take the decision to move to this heavywight process once it sees that it's
+batching a lot of lookups for the same range.
 
 ## Retiring flows
 
