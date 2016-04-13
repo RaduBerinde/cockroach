@@ -623,10 +623,6 @@ information can be used for scheduling optimizations (such as scheduling table
 readers that eventually feed into a limit sequentially instead of
 concurrently).
 
-TODO some examples, especially one where the intra-stream and inter-stream
-orderings are different and yet eventually useful:
-`(SELECT k, v FROM k ORDER BY v LIMIT 100) ORDER by k`.
-
 # Implementation strategy
 
 There are five streams of work. We keep in mind two initial milestones to track
