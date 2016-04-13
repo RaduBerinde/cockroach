@@ -20,6 +20,12 @@
     * [From logical to physical](#from-logical-to-physical)
       * [Processors](#processors)
       * [Inter-stream ordering](#inter-stream-ordering)
+    * [Execution infrastructure](#execution-infrastructure)
+      * [Creating a local plan: the ScheduleFlows RPC](#creating-a-local-plan-the-ScheduleFlows-RPC)
+      * [Local scheduling of flows](#local-scheduling-of-flows)
+      * [Mailboxes](#mailboxes)
+      * [On-the-fly flows setup](#on-the-fly-flows-setup)
+      * [Retiring flows](#retiring-flows)
   * [Implementation strategy](#implementation-strategy)
     * [Logical planning](#logical-planning)
     * [Physical planning](#physical-planning)
@@ -689,32 +695,32 @@ corresponding `ScheduleFlows` arrives. In this case, the mailbox is created on
 the fly, in the hope that the `ScheduleFlows` will follow soon. If that doesn't
 happen within a timeout, the mailbox is retired.
 Mailboxes present a channel interface to the local processors.  
-If we move to a multiple `TableReader`s/flows per node, then we'd probably
-still want one single output mailbox for all the homogeneous flows (if
-a node has 1mil ranges, we don't want 1mil mailboxes/streams). At that point we
-might want to add tagging to the different streams entering the mailbox, so
-that the inter-stream ordering property can still be used by the consumer.
+If we move to a multiple `TableReader`s/flows per node, we'd still want one
+single output mailbox for all the homogeneous flows (if a node has 1mil ranges,
+we don't want 1mil mailboxes/streams). At that point we might want to add
+tagging to the different streams entering the mailbox, so that the inter-stream
+ordering property can still be used by the consumer.
 
 A diagram of a simple query using mailboxes for its execution:
 ![Mailboxes](execution_environment.png?raw=true)
 
 ### On-the-fly flows setup
 
-In a couple of cases, it seems like we don't want all the flows to be setup
-from the get-go. `PointLookup` and `Mutate` generally start one a few ranges
-and then send data to arbitrary nodes. The amount of data to be sent to each
-node will often be very small (e.g. `PointLookup` might perform a handful of
-lookups in total on table *A*, so we don't want to set up receivers for those
-lookups on all nodes containing ranges for table *A*. Instead, the physical
-plan will contain just one processor, making the `PointLookup` aggregator
-single-stage; this node can chose whether to perform KV operations directly to
-do the lookups (for ranges with few lookups), or setup remote flows on the fly
-using the `ScheduleFlows` RPC for ranges with tons of lookups. In this case,
-the idea is to push a bunch of the computation to the data, so the flow passed
-to `ScheduleFlows` will be a copy of the physical nodes downstream of the
-aggregator, including filtering and aggregation. We imagine the processor will
-take the decision to move to this heavywight process once it sees that it's
-batching a lot of lookups for the same range.
+In a couple of cases, we don't want all the flows to be setup from the get-go.
+`PointLookup` and `Mutate` generally start on a few ranges and then send data
+to arbitrary nodes. The amount of data to be sent to each node will often be
+very small (e.g. `PointLookup` might perform a handful of lookups in total on
+table *A*, so we don't want to set up receivers for those lookups on all nodes
+containing ranges for table *A*. Instead, the physical plan will contain just
+one processor, making the `PointLookup` aggregator single-stage; this node can
+chose whether to perform KV operations directly to do the lookups (for ranges
+with few lookups), or setup remote flows on the fly using the `ScheduleFlows`
+RPC for ranges with tons of lookups. In this case, the idea is to push a bunch
+of the computation to the data, so the flow passed to `ScheduleFlows` will be a
+copy of the physical nodes downstream of the aggregator, including filtering
+and aggregation. We imagine the processor will take the decision to move to
+this heavywight process once it sees that it's batching a lot of lookups for
+the same range.
 
 ## Retiring flows
 
@@ -744,7 +750,6 @@ its input channel. This close will propagate backwards to all plan nodes.
 
 distributed txn coord (read and writes)
 streaming interface for the range scan underlying the TableReader?
->>>>>>> Add an "Execution environment" section.
 
 # Implementation strategy
 
