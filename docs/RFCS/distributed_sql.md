@@ -19,18 +19,22 @@
       * [Example 3](#example-3)
     * [From logical to physical](#from-logical-to-physical)
       * [Processors](#processors)
-      * [Inter-stream ordering](#inter-stream-ordering)
+    * [Joins](#joins)
+      * [Join-by-lookup](#join-by-lookup)
+      * [Stream joins](#stream-joins)
+    * [Inter-stream ordering](#inter-stream-ordering)
     * [Execution infrastructure](#execution-infrastructure)
-      * [Creating a local plan: the ScheduleFlows RPC](#creating-a-local-plan-the-ScheduleFlows-RPC)
+      * [Creating a local plan: the ScheduleFlows RPC](#creating-a-local-plan-the-scheduleflows-rpc)
       * [Local scheduling of flows](#local-scheduling-of-flows)
       * [Mailboxes](#mailboxes)
       * [On-the-fly flows setup](#on-the-fly-flows-setup)
-      * [Retiring flows](#retiring-flows)
+    * [Retiring flows](#retiring-flows)
+  * [KV Layer requirements](#kv-layer-requirements)
   * [Implementation strategy](#implementation-strategy)
     * [Logical planning](#logical-planning)
     * [Physical planning](#physical-planning)
     * [Processor infrastructure and implementing processors](#processor-infrastructure-and-implementing-processors)
-      * [Joins](#joins)
+      * [Joins](#joins-1)
     * [Scheduling](#scheduling)
     * [KV integration](#kv-integration)
   * [Alternatives](#alternatives)
@@ -559,12 +563,181 @@ Processors are generally made up of three components:
    * mirror: every row is sent to all output streams
    * hashing: each row goes to a single output stream, chosen according
      to a hash function applied on certain elements of the data tuples.
-   * by range: TODO (for index-join)
+   * by range: the router is programmed with range information (relating to a
+     certain table) and is able to send rows to the nodes that are leaders for
+     the respective ranges.
 
-### Inter-stream ordering
+
+## Joins
+
+### Join-by-lookup
+
+The join-by-lookup method involves receiving data from one table and looking up
+corresponding rows from another table. It is typically used for joining an index
+with the table, but they can be used for any join in the right circumstances,
+e.g. joining a small number of rows from one table ON the primary key of another
+table. We introduce a variant of `TABLE-READER` which has an input stream. Each
+element of the input stream drives a point-lookup in another table or index,
+with a corresponding value in the output. Internally the aggregator performs
+lookups in batches, the way we already do it today. Example:
+
+```sql
+TABLE t (k INT PRIMARY KEY, u INT, v INT, INDEX(u))
+SELECT k, u, v FROM t WHERE u >= 1 AND u <= 5
+```
+Logical plan:
+```
+TABLE-READER indexsrc
+Table: t@u, span /1-/6
+Output schema: k:INT, u:INT
+Output ordering: u
+
+JOIN-READER pksrc
+Table: t
+Input schema: k:INT, u:INT
+Output schema: k:INT, u:INT, v:INT
+Ordering characterization: preserves any ordering on k/u
+
+AGGREGATOR final
+Input schema: k:INT, u:INT, v:INT
+
+indexsrc -> pksrc -> final
+```
+
+Example of when this can be used for a join:
+```
+TABLE t1 (k INT PRIMARY KEY, v INT, INDEX(v))
+TABLE t2 (k INT PRIMARY KEY, w INT)
+SELECT t1.k, t1.v, t2.w FROM t1 INNER JOIN t2 ON t1.k = t2.k WHERE t1.v >= 1 AND t1.v <= 5
+```
+
+Logical plan:
+```
+TABLE-READER t1src
+Table: t1@v, span /1-/6
+Output schema: k:INT, v:INT
+Output ordering: v
+
+JOIN-READER t2src
+Table: t2
+Input schema: k:INT, v:INT
+Output schema: k:INT, v:INT, w:INT
+Ordering characterization: preserves any ordering on k
+
+AGGREGATOR final
+Input schema: k:INT, u:INT, v:INT
+
+t1src -> t2src -> final
+```
+
+Note that `JOIN-READER` has the capability of "plumbing" through an input column
+to the output (`v` in this case). In the case of index joins, this is only
+useful to skip reading or decoding the values for `v`; but in the general case
+it is necessary to pass through columns from the first table.
+
+In terms of the physical implementation of `JOIN-READER`, there are two possibilities:
+
+ 1. it can perform the KV queries (in batches) from the node it is receiving the
+    physical input stream from; the output stream continues on the same node.
+
+    This is simple but involves round-trips between the node and the range
+    leaders. We will probably use this strategy for the first implementation.
+
+ 2. it can use routers-by-range to route each input to an instance of
+    `JOIN-READER` on the node for the respective range of `t2`; the flow of data
+    continues on that node.
+
+    This avoids the round-trip but is problematic because we may be setting up
+    flows on too many nodes (for a large table, many/all nodes in the cluster
+    could hold ranges). To implement this effectively, we require the ability to
+    set up the flows "lazily" (as needed), only when we actually find a row that
+    needs to go through a certain flow. This strategy can be particularly useful
+    when the ordering of `t1` and `t2` are correlated (e.g. t1 could be ordered
+    by a date, `t2` could be ordered by an implicit primary key).
+
+
+    Even with this optimization, it would be wasteful if we involve too many
+    remote nodes but we only end up doing a handful of queries. We can
+    investigate a hybrid approach where we batch some results and depending on
+    how many we have and how many different ranges/nodes they span, we choose
+    between the two strategies.
+
+
+### Stream joins
+
+The join aggregator performs a join on two streams, with equality constraints
+between certain columns. The aggregator is grouped on the columns that are
+constrained to be equal.
+
+```
+TABLE People (First STRING, Last STRING, Age INT)
+TABLE Applications (College STRING PRIMARY KEY, First STRING, Last STRING)
+SELECT College, Last, First, Age FROM People INNER JOIN Applications ON First, Last
+
+TABLE-READER src1
+Table: People
+Output Schema: First:STRING, Last:STRING, Age:INT
+Output Ordering: none
+
+TABLE_READER src2
+Table: Applications
+Output Schema: College:STRING, First:STRING, Last:STRING
+Output Ordering: none
+
+JOIN AGGREGATOR join
+Input schemas:
+  1: First:STRING, Last:STRING, Age:INT
+  2: College:STRING, First:STRING, Last:STRING
+Output schema: First:STRING, Last:STRING, Age:INT, College:STRING
+Group key: (1.First, 1.Last) = (2.First, 2.Last)  // we need to get the group key from either stream
+Order characterization: no order preserved  // could also preserve the order of one of the streams
+
+AGGREGATOR final
+  Ordering requirement: none
+  Input schema: First:STRING, Last:STRING, Age:INT, College:STRING
+```
+
+![Logical plan for join](distributed_sql_join_logical.png?raw=true "Logical plan for join")
+
+At the heart of the physical implementation of the stream join aggregators sits
+the join processor which (in general) puts all the rows from one stream in a
+hash map and then processes the other stream. If both streams are ordered by the
+group key, it can perform a merge-join which requires less memory.
+
+
+Using the same join processor implementation, we can implement different
+distribution strategies depending how we set up the physical streams and
+routers:
+
+ - the routers can distribute each row to one of multiple join processors based
+   on a hash on the elements for the group key; this ensures that all elements
+   in a group reach the same instance, achieving a hash-join. An example
+   physical plan:
+
+   ![Physical plan for hash join](distributed_sql_join_physical.png?raw=true "Physical plan for hash join")
+
+ - the routers can *duplicate* all rows from the physical streams for one table
+   and distribute copies to all processor instances; the streams for the other
+   table get processed on their respective nodes. This strategy is useful when
+   we are joining a big table with a small table, and can be particularly useful
+   for subqueries, e.g. `SELECT ... WHERE ... AND x IN (SELECT ...)`.
+
+   For the query above, if we expect few results from `src2`, this plan would
+   be more efficient:
+
+   ![Physical plan for dup join](distributed_sql_join_physical2.png?raw=true "Physical plan for dup join")
+   
+   The difference in this case is that the streams for the first table stay on
+   the same node, and the routers after the `src2` table readers are configured
+   to mirror the results (instead of distributing by hash in the previos case).
+
+  
+## Inter-stream ordering
 
 **This is a feature that relates to implementing certain optimizations, but does
-not alter the structure of logical or physical plans.**
+not alter the structure of logical or physical plans. It will not be part of the
+initial implementation but we keep it in mind for potential use at a later
+point.**
 
 Consider this example:
 ```sql
@@ -628,10 +801,6 @@ physical streams can happen by reading the streams sequentially. The same
 information can be used for scheduling optimizations (such as scheduling table
 readers that eventually feed into a limit sequentially instead of
 concurrently).
-
-TODO some examples, especially one where the intra-stream and inter-stream
-orderings are different and yet eventually useful:
-`(SELECT k, v FROM k ORDER BY v LIMIT 100) ORDER by k`.
 
 ## Execution infrastructure
 
