@@ -142,43 +142,36 @@ distribute the processing on multiple nodes (parallelization for performance).
 
 ## Overview
 
-!!! Needs revising !!!
+The proposed approach was originally inspired by [Sawzall][1] - a project by
+Rob Pike et al.  at Google that proposes a "shell" (high-level language
+interpreter) to ease the exploitation of MapReduce. Its main innovation is a
+concise syntax to define “local” processes that take a piece of local data and
+emit zero or more results (these get translated to Map logic); then another
+syntax which takes results from the local transformations and aggregates them
+in different ways (this gets translated to Reduce logic).  In a nutshell:
+Sawzall = MapReduce + high-level syntax + new terminology (conveniently hiding
+distributed computations behind a simple set of conceptual constructs).
 
-The proposed approach is inspired by [Sawzall][1] - a project by Rob Pike et al.
-that proposes a "shell" (high-level language interpreter) to ease the
-exploitation of MapReduce. Its main innovation is a concise syntax to define
-“local” processes that take a piece of local data and emit zero or more results
-(these get translated to Map logic); then another syntax which takes results
-from the local transformations and aggregates them in different ways (this gets
-translated to Reduce logic). In a nutshell: Sawzall = MapReduce + high-level
-syntax + new terminology ("local filtering" instead of "map", "aggregation"
-instead of "reduce").
+We propose something somewhat similar, but targeting a different execution
+model than MapReduce.
 
-We propose something similar:
-
-1. a simple language that operates on one small range of k/v at a time -
-   corresponding to a SQL row or maybe a SQL parent row + nested rows. The
-   language has no loops, no stack, no local variables. The processing it can do
-   on a row is pretty limited - mostly filtering and extracting columns.
-
-2. a routing of these results to multiple aggregator processes. 
-
-The aggregators are distributed across the cluster and they implement all the
-possible SQL aggregation functions (counting, grouping, statistics, no
-aggregation, etc). 
+1. A predefined set of *aggregators*, performing functionality required by SQL.
+   Most aggregators are configurable, but not fully programmable.
+2. One special aggregator is programmable using a very simple language, but
+   the program is restricted to operating on one row of data at a time.
+3. A routing of the results of an aggregator to the next aggregator in the
+   query pipeline.
+4. A logical model that allows for SQL to be compiled in a data-location-agnostic
+   way, but that captures enough information so that we can distribute the
+   computation.
 
 Besides accumulating or aggregating data, the aggregators can feed their results
 to another node or set of nodes, possibly as input for other programs. Finally,
 aggregators with special functionality for batching up results and performing KV
-commands are used to make updates to the database.
+commands are used to read data or make updates to the database.
 
-The key idea that makes this approach tractable for us is that we only have a
-small number of map/reduce scenarios possible in SQL (those dictated by
-relational algebra). So we can have them in a predetermined library and only
-need to transform SQL queries to a very high-level schedule of map and reduce
-operations from our library. With care, the language that we need to introduce
-stays simple by being restricted to operate on what constitutes a single SQL
-record (row or index entry).
+The key idea is that we can map SQL to a well-defined logical model which we
+then transform into a distributed execution plan.
 
 [1]: http://research.google.com/archive/sawzall.html
 
@@ -967,7 +960,7 @@ its input channel. This close will propagate backwards to all plan nodes.
 # A more complex example: Daily Promotion
 
 Let's draw a possible logical and physical plan for a more complex query. The
-point of the query is to help with a promotion that goes out daily, targetting
+point of the query is to help with a promotion that goes out daily, targeting
 customers that have spent over $1000 in the last year. We'll insert into the
 `DailyPromotion` table rows representing each such customer and the sum of her
 recent orders.
