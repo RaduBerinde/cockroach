@@ -29,7 +29,6 @@
       * [Mailboxes](#mailboxes)
       * [On-the-fly flows setup](#on-the-fly-flows-setup)
     * [Retiring flows](#retiring-flows)
-  * [KV Layer requirements](#kv-layer-requirements)
   * [Implementation strategy](#implementation-strategy)
     * [Logical planning](#logical-planning)
     * [Physical planning](#physical-planning)
@@ -914,11 +913,6 @@ under a number of circumstances:
 
 Cancelling a running query can be done by asking the `final` processor to close
 its input channel. This close will propagate backwards to all plan nodes.
-
-# KV Layer requirements
-
-distributed txn coord (read and writes)
-streaming interface for the range scan underlying the TableReader?
 
 # Implementation strategy
 
