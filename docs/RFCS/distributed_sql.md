@@ -36,7 +36,7 @@
       * [Joins](#joins-1)
     * [Scheduling](#scheduling)
     * [KV integration](#kv-integration)
-  * [Alternatives](#alternatives)
+  * [Alternate approaches considered (and rejected)](#alternate-approaches-considered-and-rejected)
     * [More logic in the KV layer](#more-logic-in-the-kv-layer)
       * [Complexity](#complexity)
       * [Applicability](#applicability)
@@ -1022,9 +1022,10 @@ KV integration involves three aspects:
 The details of all these need to be further investigated. Only 1 and 2 are
 required for M1; 3 is required for M2.
 
-# Alternatives
+# Alternate approaches considered (and rejected)
 
-We outline a set of alternative approaches that were considered.
+We outline a few different approaches we considered but eventually decided
+against.
 
 ## More logic in the KV layer
 
