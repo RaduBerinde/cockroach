@@ -873,7 +873,7 @@ tagging to the different streams entering the mailbox, so that the inter-stream
 ordering property can still be used by the consumer.
 
 A diagram of a simple query using mailboxes for its execution:
-![Mailboxes](execution_environment.png?raw=true)
+![Mailboxes](distributed_sql_mailboxes.png?raw=true)
 
 ### On-the-fly flows setup
 
