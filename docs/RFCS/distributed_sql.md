@@ -20,6 +20,12 @@
     * [From logical to physical](#from-logical-to-physical)
       * [Processors](#processors)
       * [Inter-stream ordering](#inter-stream-ordering)
+    * [Execution infrastructure](#execution-infrastructure)
+      * [Creating a local plan: the ScheduleFlows RPC](#creating-a-local-plan-the-ScheduleFlows-RPC)
+      * [Local scheduling of flows](#local-scheduling-of-flows)
+      * [Mailboxes](#mailboxes)
+      * [On-the-fly flows setup](#on-the-fly-flows-setup)
+      * [Retiring flows](#retiring-flows)
   * [Implementation strategy](#implementation-strategy)
     * [Logical planning](#logical-planning)
     * [Physical planning](#physical-planning)
@@ -626,6 +632,124 @@ concurrently).
 TODO some examples, especially one where the intra-stream and inter-stream
 orderings are different and yet eventually useful:
 `(SELECT k, v FROM k ORDER BY v LIMIT 100) ORDER by k`.
+
+## Execution infrastructure
+
+Once a physical plan has been generated, the system needs to divvy it up
+between the nodes and send it around for execution. Each node is responsible
+for locally scheduling data processors and input synchronizers. Nodes also need
+to be able to communicate with each other for connecting output routers to
+input synchronizers. In particular, a streaming interface is needed for
+connecting these actors. To avoid paying extra synchronization costs, the
+execution environment providing all these needs to be flexible enough so that
+different nodes can start executing their pieces in isolation, without any
+orchestration from the gateway besides the initial request to schedule a part
+of the plan.
+
+### Creating a local plan: the `ScheduleFlows` RPC
+
+Distributed execution starts with the gateway making a request to every node
+that's supposed to execute part of the plan asking the node to schedule the
+sub-plan(s) it's responsible for (modulo "on-the-fly" flows, see below). A node
+might be responsible for multiple disparate pieces of the overall DAG. Let's
+call each of them a *flow*. A flow is described by the sequence of physical
+plan nodes in it, the connections between them (input synchronizers, output
+routers) plus identifiers for the input streams of the top node in the plan and
+the output streams of the (possibly multiple) bottom nodes. A node might be
+responsible for multiple heterogeneous flows. More commonly, when a node is the
+leader for multiple ranges from the same table involved in the query, it will
+be responsible for a set of homogeneous flows, one per range, all starting with
+a `TableReader` processor. In the beginning, we'll coalesce all these
+`TableReader`s into one, configured with all the spans to be read across all
+the ranges local to the node. This means that we'll lose the inter-stream
+ordering (since we've turned everything into a single stream). Later on we
+might move to having one `TableReader` per range, so that we can schedule
+multiple of them to run in parallel.
+
+A node therefore implements a `SchedulePlan` RPC which takes a set of flows,
+sets up the input and output mailboxes (see below), creates the local
+processors and starts their execution. We might imagine at some point
+implementing admission control for flows at the node boundary, in which case
+the RPC response would have the option to push back on the volume of work
+that's being requested.
+
+### Local scheduling of flows
+
+The simplest way to schedule the different processors locally on a node is
+concurrently: each data processor, synchronizer and router can be run as a
+goroutine, with channels between them. The channels can be buffered to
+synchronize producers and consumers to a controllable degree.
+
+### Mailboxes
+
+Flows on different nodes communicate with each other over GRPC streams. To
+allow the producer and the consumer to start at different times,
+`ScheduleFlows` creates named mailboxes for all the input and output streams.
+These message boxes will hold some number of tuples in an internal queue until
+a GRPC stream is established for transporting them. From that moment on, GRPC
+flow control is used to synchronize the producer and consumer.  
+A GRPC stream is established by the consumer using the `StreamMailbox` RPC,
+taking a mailbox id (the same one that's been already used in the flows passed
+to `ScheduleFlows`). This call might arrive to a node even before the
+corresponding `ScheduleFlows` arrives. In this case, the mailbox is created on
+the fly, in the hope that the `ScheduleFlows` will follow soon. If that doesn't
+happen within a timeout, the mailbox is retired.
+Mailboxes present a channel interface to the local processors.  
+If we move to a multiple `TableReader`s/flows per node, we'd still want one
+single output mailbox for all the homogeneous flows (if a node has 1mil ranges,
+we don't want 1mil mailboxes/streams). At that point we might want to add
+tagging to the different streams entering the mailbox, so that the inter-stream
+ordering property can still be used by the consumer.
+
+A diagram of a simple query using mailboxes for its execution:
+![Mailboxes](execution_environment.png?raw=true)
+
+### On-the-fly flows setup
+
+In a couple of cases, we don't want all the flows to be setup from the get-go.
+`PointLookup` and `Mutate` generally start on a few ranges and then send data
+to arbitrary nodes. The amount of data to be sent to each node will often be
+very small (e.g. `PointLookup` might perform a handful of lookups in total on
+table *A*, so we don't want to set up receivers for those lookups on all nodes
+containing ranges for table *A*. Instead, the physical plan will contain just
+one processor, making the `PointLookup` aggregator single-stage; this node can
+chose whether to perform KV operations directly to do the lookups (for ranges
+with few lookups), or setup remote flows on the fly using the `ScheduleFlows`
+RPC for ranges with tons of lookups. In this case, the idea is to push a bunch
+of the computation to the data, so the flow passed to `ScheduleFlows` will be a
+copy of the physical nodes downstream of the aggregator, including filtering
+and aggregation. We imagine the processor will take the decision to move to
+this heavywight process once it sees that it's batching a lot of lookups for
+the same range.
+
+## Retiring flows
+
+Processors and mailboxes needs to be destroyed at some point. This happens
+under a number of circumstances:
+
+1. A processor retires when it receives a sentinel on all of its input streams
+   and has outputted the last tuple (+ a sentinel) on all of its output
+   streams.
+2. A processor retires once either one of its input or output streams is
+   closed. This can be used by a consumer to inform its producers that it's
+   gotten all the data it needs.
+3. An input mailbox retires once it has put the sentinel on the wire or once
+   its GRPC stream is closed remotely.
+4. An output mailbox retires once it has passed on the sentinel to the reader,
+   which it does once all of its input channels are closed (remember that an
+   output mailbox may receive input from many channels, one per member of a
+   homogeneous flow family). It also retires if its GRPC stream is closed
+   remotely.
+5. `TableReader` retires once it has delivered the last tuple in its range (+ a
+   sentinel).
+
+Cancelling a running query can be done by asking the `final` processor to close
+its input channel. This close will propagate backwards to all plan nodes.
+
+# KV Layer requirements
+
+distributed txn coord (read and writes)
+streaming interface for the range scan underlying the TableReader?
 
 # Implementation strategy
 
