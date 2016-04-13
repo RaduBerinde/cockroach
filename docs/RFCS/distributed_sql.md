@@ -629,10 +629,6 @@ information can be used for scheduling optimizations (such as scheduling table
 readers that eventually feed into a limit sequentially instead of
 concurrently).
 
-TODO some examples, especially one where the intra-stream and inter-stream
-orderings are different and yet eventually useful:
-`(SELECT k, v FROM k ORDER BY v LIMIT 100) ORDER by k`.
-
 ## Execution infrastructure
 
 Once a physical plan has been generated, the system needs to divvy it up
