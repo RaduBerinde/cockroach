@@ -974,8 +974,16 @@ under a number of circumstances:
 5. `TableReader` retires once it has delivered the last tuple in its range (+ a
    sentinel).
 
-Cancelling a running query can be done by asking the `final` processor to close
-its input channel. This close will propagate backwards to all plan nodes.
+### Error handling
+
+At least initially, the plan is to have no error recovery (anything goes wrong
+during execution, the query fails and the transaction is rolled back).
+The only concern is releasing all resources taken by the plan nodes. 
+This can be done by propagating an error signal when any GRPC stream is 
+closed abruptly.  
+Similarly, cancelling a running query can be done by asking the `FINAL` processor 
+to close its input channel. This close will propagate backwards to all plan nodes.
+
 
 # A more complex example: Daily Promotion
 
