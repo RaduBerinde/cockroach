@@ -7,6 +7,7 @@
 
 # Table of Contents
 
+
   * [Table of Contents](#table-of-contents)
   * [Summary](#summary)
     * [Vocabulary](#vocabulary)
@@ -16,8 +17,9 @@
     * [Logical model and logical plans](#logical-model-and-logical-plans)
       * [Example 1](#example-1)
       * [Example 2](#example-2)
+      * [Back propagation of ordering requirements](#back-propagation-of-ordering-requirements)
       * [Example 3](#example-3)
-    * [Types of aggregators](#types-of-aggregators)
+      * [Types of aggregators](#types-of-aggregators)
     * [From logical to physical](#from-logical-to-physical)
       * [Processors](#processors)
     * [Joins](#joins)
@@ -50,6 +52,7 @@
       * [Sample program](#sample-program)
       * [Complexity](#complexity-2)
   * [Unresolved questions](#unresolved-questions)
+
 
 # Summary
 
@@ -386,9 +389,26 @@ There is also the possibility that `summer` uses an ordered map, in which case
 it will always output the results in age order; that would mean we are always in
 case 1 above, regardless of the ordering of `src`.
 
-TODO add a section on back-propagation of ordering requirements to help choose
-the desired ordering characterization function for `summer` (i.e. only use an
-ordered map if the order it provides is useful).
+### Back propagation of ordering requirements
+
+In the previous example we saw how we we could use an ordering on a table reader
+stream along with an order preservation guarantee to avoid sorting. The
+preliminary logical plan will try to preserve ordering as much as possible to
+minimize any additional sorting.
+
+However, in some cases preserving ordering might come with some cost; some
+aggregators could be configured to either preserve ordering or not. To avoid
+preserving ordering unnecessarily, after the sorting aggregators are put in
+place we post-process the logical plan to relax the ordering on the streams
+wherever possible. Specifically, we inspect each logical stream (in reverse
+topological order) and check if removing its ordering still yields a correct
+plan; this results in a back-propagation of the ordering requirements.
+
+To recap, the logical planning has three stages:
+ 1. preliminary logical plan, with ordering preserved as much as possible and no
+    sort nodes,
+ 2. order-satisfying logical plan, with sort nodes added as necessary,
+ 3. final logical plan, with ordering requirements relaxed where possible.
 
 ### Example 3
 
@@ -1440,3 +1460,5 @@ This approach involves building the most machinery; it is probably overkill
 unless we want to use that machinery in other ways than SQL.
 
 # Unresolved questions
+
+The question of what unresolved questions there are is, as of yet, unresolved.
