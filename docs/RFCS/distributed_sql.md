@@ -70,7 +70,7 @@ discussion and not a complete detailed design.
 - Leader node / Leader-side - the cluster node which resolves a KV operation and
                               has local access to the respective KV data
 
-Most of the following text reads from the entry-side perspective, where the query parsing and planning currently runs.
+Most of the following text reads from the gateway-side perspective, where the query parsing and planning currently runs.
 
 # Motivation
 
