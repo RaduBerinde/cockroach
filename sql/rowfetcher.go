@@ -108,6 +108,14 @@ func (rf *rowFetcher) init(
 		rf.indexColIdx[i] = rf.colIdxMap[id]
 	}
 
+	if isSecondaryIndex {
+		for i, needed := range valNeededForCol {
+			if needed && !index.containsColumnID(desc.Columns[i].ID) {
+				return fmt.Errorf("requested column %d not in index", desc.Columns[i].Name)
+			}
+		}
+	}
+
 	var err error
 	// Prepare our index key vals slice.
 	rf.keyValTypes, err = makeKeyVals(rf.desc, indexColumnIDs)
@@ -133,6 +141,13 @@ func (rf *rowFetcher) init(
 // startScan initializes and starts the key-value scan. Can be used multiple
 // times.
 func (rf *rowFetcher) startScan(txn *client.Txn, spans spans, limitHint int64) *roachpb.Error {
+	if len(spans) == 0 {
+		// If no spans were specified retrieve all of the keys that start with our
+		// index key prefix.
+		start := roachpb.Key(MakeIndexKeyPrefix(rf.desc.ID, rf.index.ID))
+		spans = []span{span{start: start, end: start.PrefixEnd()}}
+	}
+
 	rf.indexKey = nil
 
 	// If we have a limit hint, we limit the first batch size. Subsequent
