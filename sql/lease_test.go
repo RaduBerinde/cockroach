@@ -384,7 +384,7 @@ func TestCantLeaseDeletedTable(testingT *testing.T) {
 	clearSchemaChangers := false
 	ctx, _ := createTestServerContext()
 	ctx.TestingKnobs.ExecutorTestingKnobs.SyncSchemaChangersFilter =
-		func(tscc csql.TestingSchemaChangerCollection) {
+		func(tscc csql.SchemaChangersManipulator) {
 			mu.Lock()
 			defer mu.Unlock()
 			if clearSchemaChangers {
@@ -460,7 +460,7 @@ func TestLeasesOnDeletedTableAreReleasedImmediately(t *testing.T) {
 	clearSchemaChangers := false
 	ctx, _ := createTestServerContext()
 	ctx.TestingKnobs.ExecutorTestingKnobs.SyncSchemaChangersFilter =
-		func(tscc csql.TestingSchemaChangerCollection) {
+		func(tscc csql.SchemaChangersManipulator) {
 			mu.Lock()
 			defer mu.Unlock()
 			if clearSchemaChangers {

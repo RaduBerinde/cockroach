@@ -296,7 +296,7 @@ func TestAsyncSchemaChanger(t *testing.T) {
 	// changer executes all schema changes.
 	ctx, _ := createTestServerContext()
 	ctx.TestingKnobs.ExecutorTestingKnobs.SyncSchemaChangersFilter =
-		func(tscc csql.TestingSchemaChangerCollection) {
+		func(tscc csql.SchemaChangersManipulator) {
 			tscc.ClearSchemaChangers()
 		}
 	defer csql.TestSpeedupAsyncSchemaChanges()()

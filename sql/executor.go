@@ -162,25 +162,23 @@ type ExecutorContext struct {
 	TestingKnobs *ExecutorTestingKnobs
 }
 
-// TestingSchemaChangerCollection is an exported (for testing) version of
-// schemaChangerCollection.
+// SchemaChangersManipulator is an interface used to provide the schema changers
+// filter with access to functionality.
 // TODO(andrei): get rid of this type once we can have tests internal to the sql
 // package (as of April 2016 we can't because sql can't import server).
-type TestingSchemaChangerCollection struct {
-	scc *schemaChangerCollection
+type SchemaChangersManipulator interface {
+	// ClearSchemaChangers clears the schema changers from the collection. When
+	// this is called from a SyncSchemaChangersFilter, no schema changer will be
+	// run.
+	ClearSchemaChangers()
 }
 
-// ClearSchemaChangers clears the schema changers from the collection.
-// If this is called from a SyncSchemaChangersFilter, no schema changer will be
-// run.
-func (tscc TestingSchemaChangerCollection) ClearSchemaChangers() {
-	tscc.scc.schemaChangers = tscc.scc.schemaChangers[:0]
-}
+var _ SchemaChangersManipulator = &schemaChangerCollection{}
 
-// SyncSchemaChangersFilter is the type of a hook to be installed through the
-// ExecutorContext for blocking or otherwise manipulating schema changers run
-// through the sync schema changers path.
-type SyncSchemaChangersFilter func(TestingSchemaChangerCollection)
+// ClearSchemaChangers is part of the SchemaChangersManipulator interface.
+func (scc *schemaChangerCollection) ClearSchemaChangers() {
+	scc.schemaChangers = scc.schemaChangers[:0]
+}
 
 // ExecutorTestingKnobs is part of the context used to control parts of the
 // system during testing.
@@ -203,7 +201,7 @@ type ExecutorTestingKnobs struct {
 	// path) or to temporarily block execution.
 	// Note that this has nothing to do with the async path for running schema
 	// changers. To block that, see TestDisableAsyncSchemaChangeExec().
-	SyncSchemaChangersFilter SyncSchemaChangersFilter
+	SyncSchemaChangersFilter func(SchemaChangersManipulator)
 
 	// SchemaChangersStartBackfillNotification is called before applying the
 	// backfill for a schema change operation.
