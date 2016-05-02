@@ -29,6 +29,7 @@ import (
 	"github.com/cockroachdb/cockroach/roachpb"
 	"github.com/cockroachdb/cockroach/rpc"
 	"github.com/cockroachdb/cockroach/security"
+	"github.com/cockroachdb/cockroach/server/testingshim"
 	"github.com/cockroachdb/cockroach/sql"
 	"github.com/cockroachdb/cockroach/storage"
 	"github.com/cockroachdb/cockroach/storage/engine"
@@ -378,4 +379,25 @@ func (ts *TestServer) MustGetSQLNetworkCounter(name string) int64 {
 		panic(fmt.Sprintf("couldn't find metric %s", name))
 	}
 	return c
+}
+
+var _ testingshim.TestServerShim = &TestServer{}
+
+// ClientDB is part of the testingshim.TestServerShim interface.
+func (ts *TestServer) ClientDB() interface{} { return ts.db }
+
+// KVDB is part of the testingshim.TestServerShim interface.
+func (ts *TestServer) KVDB() interface{} { return ts.kvDB }
+
+type testServerShimServiceImpl struct{}
+
+// TestServerShimService can be passed to testingshim.InitTestServerShimService
+var TestServerShimService testingshim.TestServerShimService = testServerShimServiceImpl{}
+
+// New is part of the testingshim.TestServerShimService interface.
+func (testServerShimServiceImpl) New(params testingshim.TestServerShimParams) testingshim.TestServerShim {
+	ctx := NewTestContext()
+	ctx.TestingKnobs = params.Knobs
+	ctx.JoinUsing = params.JoinAddr
+	return &TestServer{Ctx: ctx}
 }

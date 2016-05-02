@@ -30,6 +30,7 @@ import (
 	"github.com/cockroachdb/cockroach/security"
 	"github.com/cockroachdb/cockroach/security/securitytest"
 	"github.com/cockroachdb/cockroach/server"
+	"github.com/cockroachdb/cockroach/server/testingshim"
 	"github.com/cockroachdb/cockroach/storage"
 	"github.com/cockroachdb/cockroach/testutils/sqlutils"
 	"github.com/cockroachdb/cockroach/testutils/storageutils"
@@ -38,10 +39,6 @@ import (
 )
 
 //go:generate ../util/leaktest/add-leaktest.sh *_test.go
-
-func init() {
-	security.SetReadFileFn(securitytest.Asset)
-}
 
 // CommandFilters provides facilities for registering "TestingCommandFilters"
 // (i.e. functions to be run on every replica command).
@@ -240,6 +237,8 @@ func cleanup(s *testServer, db *gosql.DB) {
 }
 
 func TestMain(m *testing.M) {
+	security.SetReadFileFn(securitytest.Asset)
 	randutil.SeedForTests()
+	testingshim.InitTestServerShimService(server.TestServerShimService)
 	os.Exit(m.Run())
 }
