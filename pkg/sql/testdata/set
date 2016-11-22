@@ -115,3 +115,11 @@ SET APPLICATION_NAME = 'hello'
 statement ok
 SET EXTRA_FLOAT_DIGITS = 3
 
+statement ok
+SET DIST_SQL = ALWAYS
+
+statement ok
+SET DIST_SQL = OFF
+
+statement ok
+SET DIST_SQL = ON
