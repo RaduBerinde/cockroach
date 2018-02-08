@@ -26,9 +26,9 @@ func TestFastIntMap(t *testing.T) {
 		keyRange, valRange int
 	}{
 		{keyRange: 10, valRange: 10},
-		{keyRange: numVals, valRange: maxValue + 1},
-		{keyRange: numVals + 1, valRange: maxValue + 1},
-		{keyRange: numVals, valRange: maxValue + 2},
+		{keyRange: fmVals, valRange: fmMaxValue + 1},
+		{keyRange: fmVals + 1, valRange: fmMaxValue + 1},
+		{keyRange: fmVals, valRange: fmMaxValue + 2},
 		{keyRange: 100, valRange: 100},
 	}
 	for _, tc := range cases {
@@ -109,7 +109,7 @@ func BenchmarkFastIntMap(b *testing.B) {
 	}{
 		{keyRange: 4, valRange: 4, ops: 4},
 		{keyRange: 10, valRange: 10, ops: 4},
-		{keyRange: numVals, valRange: maxValue + 1, ops: 10},
+		{keyRange: fmVals, valRange: fmMaxValue + 1, ops: 10},
 		{keyRange: 100, valRange: 100, ops: 50},
 		{keyRange: 1000, valRange: 1000, ops: 500},
 	}

@@ -27,13 +27,13 @@ import (
 // values are small. It can be passed by value (but Copy must be used for
 // independent modification of copies).
 type FastIntMap struct {
-	small [numWords]uint64
+	small [fmWords]uint64
 	large map[int]int
 }
 
 // Empty returns true if the map is empty.
 func (m FastIntMap) Empty() bool {
-	return m.small == [numWords]uint64{} && len(m.large) == 0
+	return m.small == [fmWords]uint64{} && len(m.large) == 0
 }
 
 // Copy returns a FastIntMap that can be independently modified.
@@ -51,12 +51,12 @@ func (m FastIntMap) Copy() FastIntMap {
 // Set maps a key to the given value.
 func (m *FastIntMap) Set(key, val int) {
 	if m.large == nil {
-		if key >= 0 && key < numVals && val >= 0 && val <= maxValue {
+		if key >= 0 && key < fmVals && val >= 0 && val <= fmMaxValue {
 			m.setSmallVal(uint32(key), int32(val))
 			return
 		}
 		m.large = m.toLarge()
-		m.small = [numWords]uint64{}
+		m.small = [fmWords]uint64{}
 	}
 	m.large[key] = val
 }
@@ -64,7 +64,7 @@ func (m *FastIntMap) Set(key, val int) {
 // Unset unmaps the given key.
 func (m *FastIntMap) Unset(key int) {
 	if m.large == nil {
-		if key < 0 || key >= numVals {
+		if key < 0 || key >= fmVals {
 			return
 		}
 		m.setSmallVal(uint32(key), -1)
@@ -76,7 +76,7 @@ func (m *FastIntMap) Unset(key int) {
 // key is unmapped.
 func (m FastIntMap) Get(key int) (value int, ok bool) {
 	if m.large == nil {
-		if key < 0 || key >= numVals {
+		if key < 0 || key >= fmVals {
 			return -1, false
 		}
 		val := m.getSmallVal(uint32(key))
@@ -92,18 +92,18 @@ func (m FastIntMap) Len() int {
 		return len(m.large)
 	}
 	res := 0
-	for w := 0; w < numWords; w++ {
+	for w := 0; w < fmWords; w++ {
 		v := m.small[w]
 		// We want to count the number of non-zero groups. To do this, we OR all
-		// the bits of each group into the low-bit of that group, apply a mask
+		// the bits of each group into the low-bit of that group, apply a fmMask
 		// selecting just those low bits and count the number of 1s.
 		// To OR the bits efficiently, we first OR the high half of each group into
 		// the low half of each group, and repeat.
-		// Note: this code assumes that numBits is a power of two.
-		for i := uint32(numBits / 2); i > 0; i /= 2 {
+		// Note: this code assumes that fmBits is a power of two.
+		for i := uint32(fmBits / 2); i > 0; i /= 2 {
 			v |= (v >> i)
 		}
-		res += bits.OnesCount64(v & groupLowBitMask)
+		res += bits.OnesCount64(v & fmGroupLowBitMask)
 	}
 	return res
 }
@@ -112,15 +112,15 @@ func (m FastIntMap) Len() int {
 // is empty, returns ok=false.
 func (m FastIntMap) MaxKey() (_ int, ok bool) {
 	if m.large == nil {
-		for w := numWords - 1; w >= 0; w-- {
+		for w := fmWords - 1; w >= 0; w-- {
 			if val := m.small[w]; val != 0 {
-				// Example (with numBits = 4)
+				// Example (with fmBits = 4)
 				//   pos:   3    2    1    0
 				//   bits:  0000 0000 0010 0000
 				// To get the left-most non-zero group, we calculate how many groups are
 				// covered by the leading zeros.
-				pos := numValsPerWord - 1 - bits.LeadingZeros64(val)/numBits
-				return w*numValsPerWord + pos, true
+				pos := fmValsPerWord - 1 - bits.LeadingZeros64(val)/fmBits
+				return w*fmValsPerWord + pos, true
 			}
 		}
 		return 0, false
@@ -143,13 +143,13 @@ func (m FastIntMap) MaxValue() (_ int, ok bool) {
 	if m.large == nil {
 		// In the small case, all values are positive.
 		max := -1
-		for w := 0; w < numWords; w++ {
+		for w := 0; w < fmWords; w++ {
 			if m.small[w] != 0 {
 				// To optimize for small maps, we stop when the rest of the values are
 				// unset. See the comment in MaxKey.
-				numVals := numValsPerWord - bits.LeadingZeros64(m.small[w])/numBits
+				numVals := fmValsPerWord - bits.LeadingZeros64(m.small[w])/fmBits
 				for i := 0; i < numVals; i++ {
-					val := int(m.getSmallVal(uint32(w*numValsPerWord + i)))
+					val := int(m.getSmallVal(uint32(w*fmValsPerWord + i)))
 					// NB: val is -1 here if this key isn't in the map.
 					if max < val {
 						max = val
@@ -178,7 +178,7 @@ func (m FastIntMap) MaxValue() (_ int, ok bool) {
 // arbitrary order).
 func (m FastIntMap) ForEach(fn func(key, val int)) {
 	if m.large == nil {
-		for i := 0; i < numVals; i++ {
+		for i := 0; i < fmVals; i++ {
 			if val := m.getSmallVal(uint32(i)); val != -1 {
 				fn(i, int(val))
 			}
@@ -212,7 +212,7 @@ func (m FastIntMap) String() string {
 			fmt.Fprintf(&buf, "%d:%d", k, m.large[k])
 		}
 	} else {
-		for i := 0; i < numVals; i++ {
+		for i := 0; i < fmVals; i++ {
 			if val := m.getSmallVal(uint32(i)); val != -1 {
 				if !first {
 					buf.WriteByte(' ')
@@ -226,43 +226,43 @@ func (m FastIntMap) String() string {
 	return buf.String()
 }
 
-// These constants determine the "small" representation: we pack <numVals>
-// values of <numBits> bits into <numWords> 64-bit words. Each value is 0 if the
+// These constants determine the "small" representation: we pack <fmVals>
+// values of <fmBits> bits into <fmWords> 64-bit words. Each value is 0 if the
 // corresponding key is not set, otherwise it is the value+1.
 //
-// It's desirable for efficiency that numBits, numValsPerWord are powers of two.
+// It's desirable for efficiency that fmBits, fmValsPerWord are powers of two.
 //
 // The current settings support a map from keys in [0, 31] to values in [0, 14].
 // Note that one value is reserved to indicate an unmapped element.
 const (
-	numWords       = 2
-	numBits        = 4
-	numValsPerWord = 64 / numBits              // 16
-	numVals        = numWords * numValsPerWord // 32
-	mask           = (1 << numBits) - 1
-	maxValue       = mask - 1
+	fmWords       = 2
+	fmBits        = 4
+	fmValsPerWord = 64 / fmBits             // 16
+	fmVals        = fmWords * fmValsPerWord // 32
+	fmMask        = (1 << fmBits) - 1
+	fmMaxValue    = fmMask - 1
 	// Mask for the low bits of each group: 0001 0001 0001 ...
-	groupLowBitMask = 0x1111111111111111
+	fmGroupLowBitMask = 0x1111111111111111
 )
 
 // Returns -1 if the value is unmapped.
 func (m FastIntMap) getSmallVal(idx uint32) int32 {
-	word := idx / numValsPerWord
-	pos := (idx % numValsPerWord) * numBits
-	return int32((m.small[word]>>pos)&mask) - 1
+	word := idx / fmValsPerWord
+	pos := (idx % fmValsPerWord) * fmBits
+	return int32((m.small[word]>>pos)&fmMask) - 1
 }
 
 func (m *FastIntMap) setSmallVal(idx uint32, val int32) {
-	word := idx / numValsPerWord
-	pos := (idx % numValsPerWord) * numBits
+	word := idx / fmValsPerWord
+	pos := (idx % fmValsPerWord) * fmBits
 	// Clear out any previous value
-	m.small[word] &= ^(mask << pos)
+	m.small[word] &= ^(fmMask << pos)
 	m.small[word] |= uint64(val+1) << pos
 }
 
 func (m *FastIntMap) toLarge() map[int]int {
-	res := make(map[int]int, numVals)
-	for i := 0; i < numVals; i++ {
+	res := make(map[int]int, fmVals)
+	for i := 0; i < fmVals; i++ {
 		val := m.getSmallVal(uint32(i))
 		if val != -1 {
 			res[i] = int(val)
