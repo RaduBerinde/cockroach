@@ -57,7 +57,7 @@ type kv struct {
 	seed                                 int64
 	writeSeq                             string
 	sequential                           bool
-	zipfian                              bool
+	zipfian                              float64
 	splits                               int
 	secondaryIndex                       bool
 	useOpt                               bool
@@ -100,8 +100,9 @@ var kvMeta = workload.Meta{
 		g.flags.IntVar(&g.spanPercent, `span-percent`, 0,
 			`Percent (0-100) of operations that are spanning queries of all ranges.`)
 		g.flags.Int64Var(&g.seed, `seed`, 1, `Key hash seed.`)
-		g.flags.BoolVar(&g.zipfian, `zipfian`, false,
-			`Pick keys in a zipfian distribution instead of randomly.`)
+		g.flags.Float64Var(&g.zipfian, `zipfian`, 0.0,
+			`Pick keys in a zipfian distribution instead of randomly; the argument is the `+
+				`value of the s parameter (e.g. 1.1)`)
 		g.flags.BoolVar(&g.sequential, `sequential`, false,
 			`Pick keys sequentially instead of randomly.`)
 		g.flags.StringVar(&g.writeSeq, `write-seq`, "",
@@ -135,7 +136,7 @@ func (w *kv) Hooks() workload.Hooks {
 			if w.sequential && w.splits > 0 {
 				return errors.New("'sequential' and 'splits' cannot both be enabled")
 			}
-			if w.sequential && w.zipfian {
+			if w.sequential && w.zipfian > 0.0 {
 				return errors.New("'sequential' and 'zipfian' cannot both be enabled")
 			}
 			if w.readPercent+w.spanPercent > 100 {
@@ -252,8 +253,8 @@ func (w *kv) Ops(urls []string, reg *workload.HistogramRegistry) (workload.Query
 		}
 		if w.sequential {
 			op.g = newSequentialGenerator(seq)
-		} else if w.zipfian {
-			op.g = newZipfianGenerator(seq)
+		} else if w.zipfian != 0.0 {
+			op.g = newZipfianGenerator(seq, w.zipfian)
 		} else {
 			op.g = newHashGenerator(seq)
 		}
@@ -444,12 +445,15 @@ type zipfGenerator struct {
 }
 
 // Creates a new zipfian generator.
-func newZipfianGenerator(seq *sequence) *zipfGenerator {
+func newZipfianGenerator(seq *sequence, s float64) *zipfGenerator {
+	if s <= 1.0 {
+		panic(fmt.Sprintf("invalid s value %f; must be > 1.0", s))
+	}
 	random := rand.New(rand.NewSource(timeutil.Now().UnixNano()))
 	return &zipfGenerator{
 		seq:    seq,
 		random: random,
-		zipf:   newZipf(1.1, 1, uint64(math.MaxInt64)),
+		zipf:   newZipf(s, 1, uint64(math.MaxInt64)),
 	}
 }
 
