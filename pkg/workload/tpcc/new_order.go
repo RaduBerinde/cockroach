@@ -83,6 +83,7 @@ type newOrder struct {
 	updateDistrict     workload.StmtHandle
 	selectWarehouseTax workload.StmtHandle
 	selectCustomerInfo workload.StmtHandle
+	selectItems        workload.StmtHandle
 	insertOrder        workload.StmtHandle
 	insertNewOrder     workload.StmtHandle
 }
@@ -117,6 +118,13 @@ func createNewOrder(
 		WHERE c_w_id = $1 AND c_d_id = $2 AND c_id = $3`,
 	)
 
+	n.selectItems = n.sr.Define(`
+		SELECT i_price, i_name, i_data
+		FROM item
+		WHERE i_id = ANY $1::int[]
+		ORDER BY i_id`,
+	)
+
 	n.insertOrder = n.sr.Define(`
 		INSERT INTO "order" (o_id, o_d_id, o_w_id, o_c_id, o_entry_d, o_ol_cnt, o_all_local)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -125,6 +133,17 @@ func createNewOrder(
 	n.insertNewOrder = n.sr.Define(`
 		INSERT INTO new_order (no_o_id, no_d_id, no_w_id)
 		VALUES ($1, $2, $3)`,
+	)
+
+	n.updateStock = n.sr.Define(`
+    UPSERT INTO stock(s_i_id, s_w_id, s_quantity, s_ytd, s_order_cnt, s_remote_cnt)
+    SELECT
+			unnest($1:::int[]),
+			unnest($2:::int[]),
+			unnest($3:::int[]),
+			unnest($4:::int[]),
+			unnest($5:::int[]),
+			unnest($6:::int[])`,
 	)
 
 	if err := n.sr.Init(ctx, "new-order", mcp, config.connFlags); err != nil {
@@ -244,21 +263,11 @@ func (n *newOrder) run(ctx context.Context, wID int) (interface{}, error) {
 			// 2.4.2.2: For each o_ol_cnt item in the order, query the relevant item
 			// row, update the stock row to account for the order, and insert a new
 			// line into the order_line table to reflect the item on the order.
-			itemIDs := make([]string, d.oOlCnt)
+			itemIDs := make([]int64, d.oOlCnt)
 			for i, item := range d.items {
-				itemIDs[i] = fmt.Sprint(item.olIID)
+				itemIDs[i] = int64(item.olIID)
 			}
-			rows, err := tx.QueryEx(
-				ctx,
-				fmt.Sprintf(`
-					SELECT i_price, i_name, i_data
-					FROM item
-					WHERE i_id IN (%[1]s)
-					ORDER BY i_id`,
-					strings.Join(itemIDs, ", "),
-				),
-				nil, /* options */
-			)
+			rows, err := n.selectItems.QueryTx(ctx, tx, workload.ToInt8Array(itemIDs))
 			if err != nil {
 				return err
 			}

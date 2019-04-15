@@ -23,6 +23,7 @@ import (
 
 	"github.com/cockroachdb/cockroach-go/crdb"
 	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/pgtype"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -196,4 +197,12 @@ func distribute(total, num int) []int {
 // of each other.
 func distributeMax(total, max int) []int {
 	return distribute(total, (total+max-1)/max)
+}
+
+// ToInt8Array retruns a pgtype array populated with the given integer values,
+// suitable to use as a query argument.
+func ToInt8Array(vals []int64) *pgtype.Int8Array {
+	var res pgtype.Int8Array
+	res.Set(vals)
+	return &res
 }
