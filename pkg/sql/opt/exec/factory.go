@@ -45,6 +45,14 @@ type Factory interface {
 	// ConstructValues returns a node that outputs the given rows as results.
 	ConstructValues(rows [][]tree.TypedExpr, cols sqlbase.ResultColumns) (Node, error)
 
+	// ConstructConstValues is a faster variant of ConstructValues for the case
+	// where all the input values are Datums.
+	// The getRow function is called for each row; the slice returned by getRow
+	// is not used directly so the caller can reuse it.
+	ConstructConstValues(
+		numRows int, getRow func(rowIdx int) tree.Datums, cols sqlbase.ResultColumns,
+	) (Node, error)
+
 	// ConstructScan returns a node that represents a scan of the given index on
 	// the given table.
 	//   - Only the given set of needed columns are part of the result.

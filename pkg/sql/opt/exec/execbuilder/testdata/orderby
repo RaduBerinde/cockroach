@@ -438,11 +438,8 @@ CREATE TABLE nan (id INT PRIMARY KEY, x REAL)
 query TTTTT
 EXPLAIN (VERBOSE) SELECT * FROM (SELECT * FROM (VALUES ('a'), ('b'), ('c')) AS c(x) ORDER BY x)
 ----
-values  ·              ·                 (x)  ·
-·       size           1 column, 3 rows  ·    ·
-·       row 0, expr 0  'a'               ·    ·
-·       row 1, expr 0  'b'               ·    ·
-·       row 2, expr 0  'c'               ·    ·
+values  ·     ·                 (x)  ·
+·       size  1 column, 3 rows  ·    ·
 
 query TTT
 EXPLAIN SELECT * FROM (VALUES ('a'), ('b'), ('c')) WITH ORDINALITY ORDER BY ordinality ASC
@@ -463,40 +460,31 @@ sort              ·      ·
 query TTTTT
 EXPLAIN (VERBOSE) SELECT * FROM (SELECT * FROM (VALUES ('a'), ('b'), ('c')) AS c(x)) WITH ORDINALITY
 ----
-ordinality   ·              ·                 (x, "ordinality")  ·
- └── values  ·              ·                 (column1)          ·
-·            size           1 column, 3 rows  ·                  ·
-·            row 0, expr 0  'a'               ·                  ·
-·            row 1, expr 0  'b'               ·                  ·
-·            row 2, expr 0  'c'               ·                  ·
+ordinality   ·     ·                 (x, "ordinality")  ·
+ └── values  ·     ·                 (column1)          ·
+·            size  1 column, 3 rows  ·                  ·
 
 query TTTTT
 EXPLAIN (VERBOSE) SELECT * FROM (SELECT * FROM (VALUES ('a'), ('b'), ('c')) AS c(x) ORDER BY x) WITH ORDINALITY
 ----
-ordinality        ·              ·                 (x, "ordinality")  ·
- └── sort         ·              ·                 (column1)          +column1
-      │           order          +column1          ·                  ·
-      └── values  ·              ·                 (column1)          ·
-·                 size           1 column, 3 rows  ·                  ·
-·                 row 0, expr 0  'a'               ·                  ·
-·                 row 1, expr 0  'b'               ·                  ·
-·                 row 2, expr 0  'c'               ·                  ·
+ordinality        ·      ·                 (x, "ordinality")  ·
+ └── sort         ·      ·                 (column1)          +column1
+      │           order  +column1          ·                  ·
+      └── values  ·      ·                 (column1)          ·
+·                 size   1 column, 3 rows  ·                  ·
 
 # Check that the ordering of the source does not propagate blindly to RETURNING.
 query TTTTT
 EXPLAIN (VERBOSE) INSERT INTO t(a, b) SELECT * FROM (SELECT 1 AS x, 2 AS y) ORDER BY x RETURNING b
 ----
-render                 ·              ·                   (b)              ·
- │                     render 0       b                   ·                ·
- └── run               ·              ·                   (a, b)           ·
-      └── insert       ·              ·                   (a, b)           ·
-           │           into           t(a, b, c)          ·                ·
-           │           strategy       inserter            ·                ·
-           └── values  ·              ·                   (x, y, column6)  ·
-·                      size           3 columns, 1 row    ·                ·
-·                      row 0, expr 0  1                   ·                ·
-·                      row 0, expr 1  2                   ·                ·
-·                      row 0, expr 2  CAST(NULL AS BOOL)  ·                ·
+render                 ·         ·                 (b)              ·
+ │                     render 0  b                 ·                ·
+ └── run               ·         ·                 (a, b)           ·
+      └── insert       ·         ·                 (a, b)           ·
+           │           into      t(a, b, c)        ·                ·
+           │           strategy  inserter          ·                ·
+           └── values  ·         ·                 (x, y, column6)  ·
+·                      size      3 columns, 1 row  ·                ·
 
 query TTTTT
 EXPLAIN (VERBOSE) DELETE FROM t WHERE a = 3 RETURNING b
@@ -754,8 +742,6 @@ render                      ·                      ·                 (k)      
                 │           equality cols are key  ·                 ·                ·
                 └── values  ·                      ·                 (column1)        ·
 ·                           size                   1 column, 2 rows  ·                ·
-·                           row 0, expr 0          1                 ·                ·
-·                           row 1, expr 0          3                 ·                ·
 
 query TTTTT
 EXPLAIN (VERBOSE) SELECT k FROM kv a NATURAL JOIN kv ORDER BY INDEX kv@foo

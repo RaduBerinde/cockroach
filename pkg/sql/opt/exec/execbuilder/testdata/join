@@ -195,31 +195,23 @@ query TTTTT
 EXPLAIN (VERBOSE) SELECT * FROM (SELECT * FROM (VALUES (9, 1), (8, 2)) AS a (u, k) ORDER BY k)
                   INNER JOIN (VALUES (1, 1), (2, 2)) AS b (k, w) USING (k) ORDER BY u
 ----
-render                      ·              ·                      (k, u, w)                             ·
- │                          render 0       column2                ·                                     ·
- │                          render 1       column1                ·                                     ·
- │                          render 2       column2                ·                                     ·
- └── sort                   ·              ·                      (column1, column2, column2)           +column1
-      │                     order          +column1               ·                                     ·
-      └── render            ·              ·                      (column1, column2, column2)           ·
-           │                render 0       column1                ·                                     ·
-           │                render 1       column2                ·                                     ·
-           │                render 2       column2                ·                                     ·
-           └── hash-join    ·              ·                      (column1, column2, column1, column2)  ·
-                │           type           inner                  ·                                     ·
-                │           equality       (column2) = (column1)  ·                                     ·
-                ├── values  ·              ·                      (column1, column2)                    ·
-                │           size           2 columns, 2 rows      ·                                     ·
-                │           row 0, expr 0  9                      ·                                     ·
-                │           row 0, expr 1  1                      ·                                     ·
-                │           row 1, expr 0  8                      ·                                     ·
-                │           row 1, expr 1  2                      ·                                     ·
-                └── values  ·              ·                      (column1, column2)                    ·
-·                           size           2 columns, 2 rows      ·                                     ·
-·                           row 0, expr 0  1                      ·                                     ·
-·                           row 0, expr 1  1                      ·                                     ·
-·                           row 1, expr 0  2                      ·                                     ·
-·                           row 1, expr 1  2                      ·                                     ·
+render                      ·         ·                      (k, u, w)                             ·
+ │                          render 0  column2                ·                                     ·
+ │                          render 1  column1                ·                                     ·
+ │                          render 2  column2                ·                                     ·
+ └── sort                   ·         ·                      (column1, column2, column2)           +column1
+      │                     order     +column1               ·                                     ·
+      └── render            ·         ·                      (column1, column2, column2)           ·
+           │                render 0  column1                ·                                     ·
+           │                render 1  column2                ·                                     ·
+           │                render 2  column2                ·                                     ·
+           └── hash-join    ·         ·                      (column1, column2, column1, column2)  ·
+                │           type      inner                  ·                                     ·
+                │           equality  (column2) = (column1)  ·                                     ·
+                ├── values  ·         ·                      (column1, column2)                    ·
+                │           size      2 columns, 2 rows      ·                                     ·
+                └── values  ·         ·                      (column1, column2)                    ·
+·                           size      2 columns, 2 rows      ·                                     ·
 
 # Ensure that large cross-joins are optimized somehow (#10633)
 statement ok

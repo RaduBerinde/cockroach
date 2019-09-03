@@ -10,37 +10,32 @@ CREATE TABLE t (a INT, b INT, c INT, d INT, j JSONB, s STRING)
 query TTTTT
 EXPLAIN (VERBOSE) SELECT 1 + 2 AS r
 ----
-values  ·              ·                (r)  ·
-·       size           1 column, 1 row  ·    ·
-·       row 0, expr 0  3                ·    ·
+values  ·     ·                (r)  ·
+·       size  1 column, 1 row  ·    ·
 
 query TTTTT
 EXPLAIN (VERBOSE) SELECT true AS r
 ----
-values  ·              ·                (r)  ·
-·       size           1 column, 1 row  ·    ·
-·       row 0, expr 0  true             ·    ·
+values  ·     ·                (r)  ·
+·       size  1 column, 1 row  ·    ·
 
 query TTTTT
 EXPLAIN (VERBOSE) SELECT false AS r
 ----
-values  ·              ·                (r)  ·
-·       size           1 column, 1 row  ·    ·
-·       row 0, expr 0  false            ·    ·
+values  ·     ·                (r)  ·
+·       size  1 column, 1 row  ·    ·
 
 query TTTTT
 EXPLAIN (VERBOSE) SELECT (1, 2) AS r
 ----
-values  ·              ·                (r)  ·
-·       size           1 column, 1 row  ·    ·
-·       row 0, expr 0  (1, 2)           ·    ·
+values  ·     ·                (r)  ·
+·       size  1 column, 1 row  ·    ·
 
 query TTTTT
 EXPLAIN (VERBOSE) SELECT (true, false) AS r
 ----
-values  ·              ·                (r)  ·
-·       size           1 column, 1 row  ·    ·
-·       row 0, expr 0  (true, false)    ·    ·
+values  ·     ·                (r)  ·
+·       size  1 column, 1 row  ·    ·
 
 query TTTTT
 EXPLAIN (VERBOSE) SELECT 1 + 2 AS r FROM t
@@ -409,38 +404,18 @@ render     ·         ·              (s)  ·
 query TTTTT
 EXPLAIN (VERBOSE) SELECT COALESCE(a, b) FROM (VALUES (1, 2), (3, NULL), (NULL, 4), (NULL, NULL)) AS v(a, b)
 ----
-render       ·              ·                           ("coalesce")        ·
- │           render 0       COALESCE(column1, column2)  ·                   ·
- └── values  ·              ·                           (column1, column2)  ·
-·            size           2 columns, 4 rows           ·                   ·
-·            row 0, expr 0  1                           ·                   ·
-·            row 0, expr 1  2                           ·                   ·
-·            row 1, expr 0  3                           ·                   ·
-·            row 1, expr 1  CAST(NULL AS INT8)          ·                   ·
-·            row 2, expr 0  CAST(NULL AS INT8)          ·                   ·
-·            row 2, expr 1  4                           ·                   ·
-·            row 3, expr 0  CAST(NULL AS INT8)          ·                   ·
-·            row 3, expr 1  CAST(NULL AS INT8)          ·                   ·
+render       ·         ·                           ("coalesce")        ·
+ │           render 0  COALESCE(column1, column2)  ·                   ·
+ └── values  ·         ·                           (column1, column2)  ·
+·            size      2 columns, 4 rows           ·                   ·
 
 query TTTTT
 EXPLAIN (VERBOSE) SELECT COALESCE(a, b, c) FROM (VALUES (1, 2, 3), (NULL, 4, 5), (NULL, NULL, 6), (NULL, NULL, NULL)) AS v(a, b, c)
 ----
-render       ·              ·                                    ("coalesce")                 ·
- │           render 0       COALESCE(column1, column2, column3)  ·                            ·
- └── values  ·              ·                                    (column1, column2, column3)  ·
-·            size           3 columns, 4 rows                    ·                            ·
-·            row 0, expr 0  1                                    ·                            ·
-·            row 0, expr 1  2                                    ·                            ·
-·            row 0, expr 2  3                                    ·                            ·
-·            row 1, expr 0  CAST(NULL AS INT8)                   ·                            ·
-·            row 1, expr 1  4                                    ·                            ·
-·            row 1, expr 2  5                                    ·                            ·
-·            row 2, expr 0  CAST(NULL AS INT8)                   ·                            ·
-·            row 2, expr 1  CAST(NULL AS INT8)                   ·                            ·
-·            row 2, expr 2  6                                    ·                            ·
-·            row 3, expr 0  CAST(NULL AS INT8)                   ·                            ·
-·            row 3, expr 1  CAST(NULL AS INT8)                   ·                            ·
-·            row 3, expr 2  CAST(NULL AS INT8)                   ·                            ·
+render       ·         ·                                    ("coalesce")                 ·
+ │           render 0  COALESCE(column1, column2, column3)  ·                            ·
+ └── values  ·         ·                                    (column1, column2, column3)  ·
+·            size      3 columns, 4 rows                    ·                            ·
 
 query TTTTT
 EXPLAIN (VERBOSE) SELECT a FROM t WHERE a BETWEEN b AND d

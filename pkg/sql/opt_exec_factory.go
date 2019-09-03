@@ -41,12 +41,16 @@ import (
 
 type execFactory struct {
 	planner *planner
+	ctx     context.Context
 }
 
 var _ exec.Factory = &execFactory{}
 
-func makeExecFactory(p *planner) execFactory {
-	return execFactory{planner: p}
+func makeExecFactory(ctx context.Context, p *planner) execFactory {
+	return execFactory{
+		ctx:     ctx,
+		planner: p,
+	}
 }
 
 // ConstructValues is part of the exec.Factory interface.
@@ -64,6 +68,27 @@ func (ef *execFactory) ConstructValues(
 		tuples:           rows,
 		specifiedInQuery: true,
 	}, nil
+}
+
+// ConstructConstValues is part of the exec.Factory interface.
+func (ef *execFactory) ConstructConstValues(
+	numRows int, getRow func(rowIdx int) tree.Datums, cols sqlbase.ResultColumns,
+) (exec.Node, error) {
+	if len(cols) == 0 && numRows == 1 {
+		return &unaryNode{}, nil
+	}
+	if numRows == 0 {
+		return &zeroNode{columns: cols}, nil
+	}
+
+	v := ef.planner.newContainerValuesNode(cols, numRows)
+	for i := 0; i < numRows; i++ {
+		if _, err := v.rows.AddRow(ef.ctx, getRow(i)); err != nil {
+			v.Close(ef.ctx)
+			return nil, err
+		}
+	}
+	return v, nil
 }
 
 // ConstructScan is part of the exec.Factory interface.
@@ -91,7 +116,7 @@ func (ef *execFactory) ConstructScan(
 	// users might be able to access a view that uses a higher privilege table.
 	ef.planner.skipSelectPrivilegeChecks = true
 	defer func() { ef.planner.skipSelectPrivilegeChecks = false }()
-	if err := scan.initTable(context.TODO(), ef.planner, tabDesc, nil, colCfg); err != nil {
+	if err := scan.initTable(ef.ctx, ef.planner, tabDesc, nil, colCfg); err != nil {
 		return nil, err
 	}
 
@@ -266,7 +291,7 @@ func (ef *execFactory) ConstructHashJoin(
 	leftSrc := asDataSource(left)
 	rightSrc := asDataSource(right)
 	pred, _, err := p.makeJoinPredicate(
-		context.TODO(), leftSrc.info, rightSrc.info, joinType, nil, /* cond */
+		ef.ctx, leftSrc.info, rightSrc.info, joinType, nil, /* cond */
 	)
 	if err != nil {
 		return nil, err
@@ -310,10 +335,10 @@ func (ef *execFactory) ConstructApplyJoin(
 ) (exec.Node, error) {
 	leftSrc := asDataSource(left)
 	rightSrc := asDataSource(fakeRight)
-	rightSrc.plan.Close(context.TODO())
+	rightSrc.plan.Close(ef.ctx)
 	p := ef.planner
 	pred, _, err := p.makeJoinPredicate(
-		context.TODO(), leftSrc.info, rightSrc.info, joinType, nil, /* cond */
+		ef.ctx, leftSrc.info, rightSrc.info, joinType, nil, /* cond */
 	)
 	if err != nil {
 		return nil, err
@@ -338,7 +363,7 @@ func (ef *execFactory) ConstructMergeJoin(
 	leftSrc := asDataSource(left)
 	rightSrc := asDataSource(right)
 	pred, _, err := p.makeJoinPredicate(
-		context.TODO(), leftSrc.info, rightSrc.info, joinType, nil, /* cond */
+		ef.ctx, leftSrc.info, rightSrc.info, joinType, nil, /* cond */
 	)
 	if err != nil {
 		return nil, err
@@ -576,7 +601,7 @@ func (ef *execFactory) ConstructIndexJoin(
 
 	tableScan := ef.planner.Scan()
 
-	if err := tableScan.initTable(context.TODO(), ef.planner, tabDesc, nil, colCfg); err != nil {
+	if err := tableScan.initTable(ef.ctx, ef.planner, tabDesc, nil, colCfg); err != nil {
 		return nil, err
 	}
 
@@ -621,7 +646,7 @@ func (ef *execFactory) ConstructLookupJoin(
 	colCfg := makeScanColumnsConfig(table, lookupCols)
 	tableScan := ef.planner.Scan()
 
-	if err := tableScan.initTable(context.TODO(), ef.planner, tabDesc, nil, colCfg); err != nil {
+	if err := tableScan.initTable(ef.ctx, ef.planner, tabDesc, nil, colCfg); err != nil {
 		return nil, err
 	}
 
@@ -673,7 +698,7 @@ func (ef *execFactory) constructScanForZigzag(
 	}
 
 	scan := ef.planner.Scan()
-	if err := scan.initTable(context.TODO(), ef.planner, tableDesc, nil, colCfg); err != nil {
+	if err := scan.initTable(ef.ctx, ef.planner, tableDesc, nil, colCfg); err != nil {
 		return nil, err
 	}
 
@@ -1184,7 +1209,7 @@ func (ef *execFactory) ConstructExplain(
 			return nil, errors.New("EXPLAIN ANALYZE only supported with (DISTSQL) option")
 		}
 		return ef.planner.makeExplainPlanNodeWithPlan(
-			context.TODO(),
+			ef.ctx,
 			options,
 			p.plan,
 			p.subqueryPlans,
@@ -1689,7 +1714,7 @@ func (ef *execFactory) ConstructDelete(
 
 	fastPathInterleaved := canDeleteFastInterleaved(tabDesc, fkTables)
 	if fastPathNode, ok := maybeCreateDeleteFastNode(
-		context.TODO(), input.(planNode), tabDesc, fastPathInterleaved, rowsNeeded); ok {
+		ef.ctx, input.(planNode), tabDesc, fastPathInterleaved, rowsNeeded); ok {
 		return fastPathNode, nil
 	}
 

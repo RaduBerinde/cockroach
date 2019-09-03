@@ -32,6 +32,12 @@ func (f *stubFactory) ConstructValues(
 	return struct{}{}, nil
 }
 
+func (f *stubFactory) ConstructConstValues(
+	numRows int, getRow func(rowIdx int) tree.Datums, cols sqlbase.ResultColumns,
+) (exec.Node, error) {
+	return struct{}{}, nil
+}
+
 func (f *stubFactory) ConstructScan(
 	table cat.Table,
 	index cat.Index,

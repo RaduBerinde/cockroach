@@ -340,6 +340,38 @@ func (b *Builder) buildRelational(e memo.RelExpr) (execPlan, error) {
 func (b *Builder) buildValues(values *memo.ValuesExpr) (execPlan, error) {
 	numCols := len(values.Cols)
 
+	isConst := true
+	for i := range values.Rows {
+		if !memo.CanExtractConstDatum(values.Rows[i]) {
+			isConst = false
+			break
+		}
+	}
+
+	if isConst {
+		// Faster path which allows us to pass the datums directly.
+		row := make(tree.Datums, numCols)
+		getRow := func(rowIdx int) tree.Datums {
+			tup := values.Rows[rowIdx].(*memo.TupleExpr)
+			for i := 0; i < numCols; i++ {
+				row[i] = memo.ExtractConstDatum(tup.Elems[i])
+			}
+			return row
+		}
+
+		node, err := b.factory.ConstructConstValues(
+			len(values.Rows), getRow, b.makeResultColumns(values.Cols),
+		)
+		if err != nil {
+			return execPlan{}, err
+		}
+		ep := execPlan{root: node}
+		for i, col := range values.Cols {
+			ep.outputCols.Set(int(col), i)
+		}
+		return ep, nil
+	}
+
 	rows := make([][]tree.TypedExpr, len(values.Rows))
 	rowBuf := make([]tree.TypedExpr, len(rows)*numCols)
 	scalarCtx := buildScalarCtx{}
@@ -362,7 +394,7 @@ func (b *Builder) buildValues(values *memo.ValuesExpr) (execPlan, error) {
 	return b.constructValues(rows, values.Cols)
 }
 
-func (b *Builder) constructValues(rows [][]tree.TypedExpr, cols opt.ColList) (execPlan, error) {
+func (b *Builder) makeResultColumns(cols opt.ColList) sqlbase.ResultColumns {
 	md := b.mem.Metadata()
 	resultCols := make(sqlbase.ResultColumns, len(cols))
 	for i, col := range cols {
@@ -370,7 +402,11 @@ func (b *Builder) constructValues(rows [][]tree.TypedExpr, cols opt.ColList) (ex
 		resultCols[i].Name = colMeta.Alias
 		resultCols[i].Typ = colMeta.Type
 	}
-	node, err := b.factory.ConstructValues(rows, resultCols)
+	return resultCols
+}
+
+func (b *Builder) constructValues(rows [][]tree.TypedExpr, cols opt.ColList) (execPlan, error) {
+	node, err := b.factory.ConstructValues(rows, b.makeResultColumns(cols))
 	if err != nil {
 		return execPlan{}, err
 	}

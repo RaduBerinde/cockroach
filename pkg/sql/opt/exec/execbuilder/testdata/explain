@@ -24,27 +24,24 @@ render     ·      ·
 query TTTTT colnames
 EXPLAIN (PLAN, VERBOSE) SELECT 1 a
 ----
-tree    field          description      columns  ordering
-values  ·              ·                (a)      ·
-·       size           1 column, 1 row  ·        ·
-·       row 0, expr 0  1                ·        ·
+tree    field  description      columns  ordering
+values  ·      ·                (a)      ·
+·       size   1 column, 1 row  ·        ·
 
 query TTTTT colnames
 EXPLAIN (VERBOSE,PLAN) SELECT 1 a
 ----
-tree    field          description      columns  ordering
-values  ·              ·                (a)      ·
-·       size           1 column, 1 row  ·        ·
-·       row 0, expr 0  1                ·        ·
+tree    field  description      columns  ordering
+values  ·      ·                (a)      ·
+·       size   1 column, 1 row  ·        ·
 
 
 query TTTTT colnames
 EXPLAIN (TYPES) SELECT 1 a
 ----
-tree    field          description      columns  ordering
-values  ·              ·                (a int)  ·
-·       size           1 column, 1 row  ·        ·
-·       row 0, expr 0  (1)[int]         ·        ·
+tree    field  description      columns  ordering
+values  ·      ·                (a int)  ·
+·       size   1 column, 1 row  ·        ·
 
 statement error cannot set EXPLAIN mode more than once
 EXPLAIN (PLAN,PLAN) SELECT 1
@@ -126,10 +123,9 @@ alter table  ·  ·
 query TTT
 SELECT tree, field, description FROM [EXPLAIN (VERBOSE) ALTER TABLE foo SPLIT AT VALUES (42)]
 ----
-split        ·              ·
- └── values  ·              ·
-·            size           1 column, 1 row
-·            row 0, expr 0  42
+split        ·     ·
+ └── values  ·     ·
+·            size  1 column, 1 row
 
 query TTT
 EXPLAIN DROP TABLE foo
@@ -446,22 +442,19 @@ sort             ·      ·           (a, b)              +b
 query TTTTT colnames
 EXPLAIN (TYPES) INSERT INTO t VALUES (1, 2)
 ----
-tree              field          description       columns                     ordering
-count             ·              ·                 ()                          ·
- └── insert       ·              ·                 ()                          ·
-      │           into           t(k, v)           ·                           ·
-      │           strategy       inserter          ·                           ·
-      └── values  ·              ·                 (column1 int, column2 int)  ·
-·                 size           2 columns, 1 row  ·                           ·
-·                 row 0, expr 0  (1)[int]          ·                           ·
-·                 row 0, expr 1  (2)[int]          ·                           ·
+tree              field     description       columns                     ordering
+count             ·         ·                 ()                          ·
+ └── insert       ·         ·                 ()                          ·
+      │           into      t(k, v)           ·                           ·
+      │           strategy  inserter          ·                           ·
+      └── values  ·         ·                 (column1 int, column2 int)  ·
+·                 size      2 columns, 1 row  ·                           ·
 
 query TTTTT
 EXPLAIN (TYPES) SELECT 42 AS a
 ----
-values  ·              ·                (a int)  ·
-·       size           1 column, 1 row  ·        ·
-·       row 0, expr 0  (42)[int]        ·        ·
+values  ·     ·                (a int)  ·
+·       size  1 column, 1 row  ·        ·
 
 query TTTTT
 EXPLAIN (TYPES) SELECT * FROM t
@@ -495,14 +488,8 @@ scan  ·       ·                              (k int, v int)  ·
 query TTTTT
 EXPLAIN (TYPES) VALUES (1, 2, 3), (4, 5, 6)
 ----
-values  ·              ·                  (column1 int, column2 int, column3 int)  ·
-·       size           3 columns, 2 rows  ·                                        ·
-·       row 0, expr 0  (1)[int]           ·                                        ·
-·       row 0, expr 1  (2)[int]           ·                                        ·
-·       row 0, expr 2  (3)[int]           ·                                        ·
-·       row 1, expr 0  (4)[int]           ·                                        ·
-·       row 1, expr 1  (5)[int]           ·                                        ·
-·       row 1, expr 2  (6)[int]           ·                                        ·
+values  ·     ·                  (column1 int, column2 int, column3 int)  ·
+·       size  3 columns, 2 rows  ·                                        ·
 
 query TTTTT
 EXPLAIN (TYPES) SELECT 2*count(k) as z, v FROM t WHERE v>123 GROUP BY v HAVING v<2 AND count(k)>1
@@ -546,13 +533,11 @@ count                ·         ·                              ()              
 query TTTTT
 EXPLAIN (TYPES) VALUES (1) UNION VALUES (2)
 ----
-union        ·              ·                (column1 int)  ·
- ├── values  ·              ·                (column1 int)  ·
- │           size           1 column, 1 row  ·              ·
- │           row 0, expr 0  (2)[int]         ·              ·
- └── values  ·              ·                (column1 int)  ·
-·            size           1 column, 1 row  ·              ·
-·            row 0, expr 0  (1)[int]         ·              ·
+union        ·     ·                (column1 int)  ·
+ ├── values  ·     ·                (column1 int)  ·
+ │           size  1 column, 1 row  ·              ·
+ └── values  ·     ·                (column1 int)  ·
+·            size  1 column, 1 row  ·              ·
 
 query TTTTT
 EXPLAIN (TYPES) SELECT DISTINCT k FROM t
@@ -600,17 +585,15 @@ scan  ·       ·                                                               
 query TTTTT
 EXPLAIN (TYPES) SELECT abs(2-3) AS a
 ----
-values  ·              ·                (a int)  ·
-·       size           1 column, 1 row  ·        ·
-·       row 0, expr 0  (1)[int]         ·        ·
+values  ·     ·                (a int)  ·
+·       size  1 column, 1 row  ·        ·
 
 # Check array subscripts (#13811)
 query TTTTT
 EXPLAIN (TYPES) SELECT x[1] FROM (SELECT ARRAY[1,2,3] AS x)
 ----
-values  ·              ·                (x int)  ·
-·       size           1 column, 1 row  ·        ·
-·       row 0, expr 0  (1)[int]         ·        ·
+values  ·     ·                (x int)  ·
+·       size  1 column, 1 row  ·        ·
 
 query T
 EXPLAIN (OPT) SELECT 1 AS r

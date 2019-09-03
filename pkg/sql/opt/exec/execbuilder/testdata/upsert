@@ -120,45 +120,41 @@ SELECT tree, field, description FROM [
 EXPLAIN (VERBOSE) UPSERT INTO indexed VALUES (1)
 ]
 ----
-count                            ·              ·
- └── upsert                      ·              ·
-      │                          into           indexed(a, b, c, d)
-      │                          strategy       opt upserter
-      └── render                 ·              ·
-           │                     render 0       column1
-           │                     render 1       column6
-           │                     render 2       column7
-           │                     render 3       column8
-           │                     render 4       a
-           │                     render 5       b
-           │                     render 6       c
-           │                     render 7       d
-           │                     render 8       column6
-           │                     render 9       column7
-           │                     render 10      column8
-           │                     render 11      a
-           │                     render 12      check1
-           └── render            ·              ·
-                │                render 0       column7 > 0
-                │                render 1       column1
-                │                render 2       column6
-                │                render 3       column7
-                │                render 4       column8
-                │                render 5       a
-                │                render 6       b
-                │                render 7       c
-                │                render 8       d
-                └── hash-join    ·              ·
-                     │           type           left outer
-                     ├── values  ·              ·
-                     │           size           4 columns, 1 row
-                     │           row 0, expr 0  1
-                     │           row 0, expr 1  CAST(NULL AS INT8)
-                     │           row 0, expr 2  10
-                     │           row 0, expr 3  11
-                     └── scan    ·              ·
-·                                table          indexed@primary
-·                                spans          /1-/1/#
+count                            ·          ·
+ └── upsert                      ·          ·
+      │                          into       indexed(a, b, c, d)
+      │                          strategy   opt upserter
+      └── render                 ·          ·
+           │                     render 0   column1
+           │                     render 1   column6
+           │                     render 2   column7
+           │                     render 3   column8
+           │                     render 4   a
+           │                     render 5   b
+           │                     render 6   c
+           │                     render 7   d
+           │                     render 8   column6
+           │                     render 9   column7
+           │                     render 10  column8
+           │                     render 11  a
+           │                     render 12  check1
+           └── render            ·          ·
+                │                render 0   column7 > 0
+                │                render 1   column1
+                │                render 2   column6
+                │                render 3   column7
+                │                render 4   column8
+                │                render 5   a
+                │                render 6   b
+                │                render 7   c
+                │                render 8   d
+                └── hash-join    ·          ·
+                     │           type       left outer
+                     ├── values  ·          ·
+                     │           size       4 columns, 1 row
+                     └── scan    ·          ·
+·                                table      indexed@primary
+·                                spans      /1-/1/#
 
 # Drop index and verify that existing values no longer need to be fetched.
 statement ok
@@ -169,26 +165,21 @@ SELECT tree, field, description FROM [
 EXPLAIN (VERBOSE) UPSERT INTO indexed VALUES (1) RETURNING *
 ]
 ----
-run                    ·              ·
- └── upsert            ·              ·
-      │                into           indexed(a, b, c, d)
-      │                strategy       opt upserter
-      └── render       ·              ·
-           │           render 0       column1
-           │           render 1       column6
-           │           render 2       column7
-           │           render 3       column8
-           │           render 4       column6
-           │           render 5       column7
-           │           render 6       column8
-           │           render 7       check1
-           └── values  ·              ·
-·                      size           5 columns, 1 row
-·                      row 0, expr 0  1
-·                      row 0, expr 1  CAST(NULL AS INT8)
-·                      row 0, expr 2  10
-·                      row 0, expr 3  11
-·                      row 0, expr 4  true
+run                    ·         ·
+ └── upsert            ·         ·
+      │                into      indexed(a, b, c, d)
+      │                strategy  opt upserter
+      └── render       ·         ·
+           │           render 0  column1
+           │           render 1  column6
+           │           render 2  column7
+           │           render 3  column8
+           │           render 4  column6
+           │           render 5  column7
+           │           render 6  column8
+           │           render 7  check1
+           └── values  ·         ·
+·                      size      5 columns, 1 row
 
 # Regression test for #25726.
 # UPSERT over tables with column families, on the fast path, use the

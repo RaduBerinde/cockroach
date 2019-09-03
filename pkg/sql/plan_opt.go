@@ -165,7 +165,7 @@ func (p *planner) makeOptimizerPlan(ctx context.Context) error {
 
 	// Build the plan tree.
 	root := execMemo.RootExpr()
-	execFactory := makeExecFactory(p)
+	execFactory := makeExecFactory(ctx, p)
 	plan, err := execbuilder.New(&execFactory, execMemo, &opc.catalog, root, p.EvalContext()).Build()
 	if err != nil {
 		return err
