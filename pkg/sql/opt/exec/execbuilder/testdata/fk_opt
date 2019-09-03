@@ -12,26 +12,24 @@ CREATE TABLE child (c INT PRIMARY KEY, p INT NOT NULL REFERENCES parent(p))
 query TTTTT
 EXPLAIN (VERBOSE) INSERT INTO child VALUES (1,1), (2,2)
 ----
-root                                       ·                      ·                  ()                  ·
- ├── count                                 ·                      ·                  ()                  ·
- │    └── insert                           ·                      ·                  ()                  ·
- │         │                               into                   child(c, p)        ·                   ·
- │         │                               strategy               inserter           ·                   ·
- │         └── buffer node                 ·                      ·                  (column1, column2)  ·
- │              │                          label                  buffer 1           ·                   ·
- │              └── values                 ·                      ·                  (column1, column2)  ·
- │                                         size                   2 columns, 2 rows  ·                   ·
- └── postquery                             ·                      ·                  ()                  ·
-      └── error if rows                    ·                      ·                  ()                  ·
-           └── lookup-join                 ·                      ·                  (column2)           ·
-                │                          table                  parent@primary     ·                   ·
-                │                          type                   anti               ·                   ·
-                │                          equality               (column2) = (p)    ·                   ·
-                │                          equality cols are key  ·                  ·                   ·
-                └── render                 ·                      ·                  (column2)           ·
-                     │                     render 0               column2            ·                   ·
-                     └── scan buffer node  ·                      ·                  (column1, column2)  ·
-·                                          label                  buffer 1           ·                   ·
+root                             ·                      ·                  ()                  ·
+ ├── count                       ·                      ·                  ()                  ·
+ │    └── insert                 ·                      ·                  ()                  ·
+ │         │                     into                   child(c, p)        ·                   ·
+ │         │                     strategy               inserter           ·                   ·
+ │         └── values            ·                      ·                  (column1, column2)  ·
+ │                               size                   2 columns, 2 rows  ·                   ·
+ └── postquery                   ·                      ·                  ()                  ·
+      └── error if rows          ·                      ·                  ()                  ·
+           └── lookup-join       ·                      ·                  (column2)           ·
+                │                table                  parent@primary     ·                   ·
+                │                type                   anti               ·                   ·
+                │                equality               (column2) = (p)    ·                   ·
+                │                equality cols are key  ·                  ·                   ·
+                └── render       ·                      ·                  (column2)           ·
+                     │           render 0               column2            ·                   ·
+                     └── values  ·                      ·                  (column1, column2)  ·
+·                                size                   2 columns, 2 rows  ·                   ·
 
 # Use data from a different table as input.
 statement ok

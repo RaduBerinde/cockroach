@@ -819,6 +819,11 @@ func (ef *execFactory) ConstructMax1Row(input exec.Node) (exec.Node, error) {
 
 // ConstructBuffer is part of the exec.Factory interface.
 func (ef *execFactory) ConstructBuffer(input exec.Node, label string) (exec.Node, error) {
+	if v, ok := input.(*valuesNode); ok && v.rows != nil {
+		// This is a valuesNode created by ConstructConstValues. We don't need to
+		// buffer it; see ConstructScanBuffer.
+		return input, nil
+	}
 	return &bufferNode{
 		plan:  input.(planNode),
 		label: label,
@@ -827,6 +832,18 @@ func (ef *execFactory) ConstructBuffer(input exec.Node, label string) (exec.Node
 
 // ConstructScanBuffer is part of the exec.Factory interface.
 func (ef *execFactory) ConstructScanBuffer(ref exec.Node, label string) (exec.Node, error) {
+	if v, ok := ref.(*valuesNode); ok {
+		// This is a valuesNode created by ConstructConstValues. Create a values
+		// node backed by the same container.
+		return &valuesNode{
+			columns:          v.columns,
+			specifiedInQuery: v.specifiedInQuery,
+			valuesRun: valuesRun{
+				rows:               v.rows,
+				clonedRowContainer: true,
+			},
+		}, nil
+	}
 	return &scanBufferNode{
 		buffer: ref.(*bufferNode),
 		label:  label,

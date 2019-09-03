@@ -127,6 +127,9 @@ func (p *planner) newContainerValuesNode(columns sqlbase.ResultColumns, capacity
 type valuesRun struct {
 	rows    *rowcontainer.RowContainer
 	nextRow int // The index of the next row.
+	// If true, the rows field was copied from another node and should not be
+	// closed. See execFactory.ConstructScanBuffer.
+	clonedRowContainer bool
 }
 
 func (n *valuesNode) startExec(params runParams) error {
@@ -180,7 +183,7 @@ func (n *valuesNode) Values() tree.Datums {
 }
 
 func (n *valuesNode) Close(ctx context.Context) {
-	if n.rows != nil {
+	if n.rows != nil && !n.clonedRowContainer {
 		n.rows.Close(ctx)
 		n.rows = nil
 	}
