@@ -476,7 +476,20 @@ func (b *Builder) buildFKChecks(checks memo.FKChecksExpr) error {
 		if err != nil {
 			return err
 		}
-		b.postqueries = append(b.postqueries, node)
+
+		if len(b.postqueries) == 0 {
+			b.postqueries = append(b.postqueries, node)
+		} else {
+			// Use a Union to make all checks run in parallel.
+			// TODO(radu,jordan): the execution layer should have the capability to
+			// run postqueries in parallel without this hack.
+			b.postqueries[0], err = b.factory.ConstructSetOp(
+				tree.UnionOp, true /* all */, b.postqueries[0], node,
+			)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
