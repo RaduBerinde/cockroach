@@ -179,7 +179,7 @@ insert "order"
  ├── cardinality: [0 - 0]
  ├── side-effects, mutations
  ├── stats: [rows=0]
- ├── cost: 6.29
+ ├── cost: 1.35
  ├── values
  │    ├── columns: column1:9(int!null) column2:10(int!null) column3:11(int!null) column4:12(int!null) column5:13(timestamp!null) column6:14(int!null) column7:15(int!null) column16:16(int)
  │    ├── cardinality: [1 - 1]
@@ -199,25 +199,35 @@ insert "order"
  │         └── null [type=int]
  └── f-k-checks
       └── f-k-checks-item: order(o_w_id,o_d_id,o_c_id) -> customer(c_w_id,c_d_id,c_id)
-           └── anti-join (lookup customer)
+           └── anti-join (hash)
                 ├── columns: column3:38(int!null) column2:39(int!null) column4:40(int!null)
-                ├── key columns: [38 39 40] = [19 18 17]
                 ├── cardinality: [0 - 1]
-                ├── stats: [rows=1e-10]
-                ├── cost: 6.26
+                ├── stats: [rows=0]
+                ├── cost: 1.32
                 ├── key: ()
-                ├── fd: ()-->(9-16), (11)-->(38), (10)-->(39), (12)-->(40)
-                ├── with-scan &1
+                ├── fd: ()-->(38-40)
+                ├── prune: (38-40)
+                ├── values
                 │    ├── columns: column3:38(int!null) column2:39(int!null) column4:40(int!null)
-                │    ├── mapping:
-                │    │    ├──  column3:11(int) => column3:38(int)
-                │    │    ├──  column2:10(int) => column2:39(int)
-                │    │    └──  column4:12(int) => column4:40(int)
                 │    ├── cardinality: [1 - 1]
                 │    ├── stats: [rows=1]
-                │    ├── cost: 0.01
+                │    ├── cost: 0.02
                 │    ├── key: ()
-                │    └── fd: ()-->(9-16), (11)-->(38), (10)-->(39), (12)-->(40)
+                │    ├── fd: ()-->(38-40)
+                │    ├── prune: (38-40)
+                │    └── tuple [type=tuple{int, int, int}]
+                │         ├── const: 10 [type=int]
+                │         ├── const: 5 [type=int]
+                │         └── const: 50 [type=int]
+                ├── scan customer
+                │    ├── columns: c_id:17(int!null) c_d_id:18(int!null) c_w_id:19(int!null)
+                │    ├── constraint: /19/18/17: [/10/5/50 - /10/5/50]
+                │    ├── cardinality: [0 - 1]
+                │    ├── stats: [rows=1, distinct(17)=1, null(17)=0, distinct(18)=1, null(18)=0, distinct(19)=1, null(19)=0]
+                │    ├── cost: 1.25
+                │    ├── key: ()
+                │    ├── fd: ()-->(17-19)
+                │    └── interesting orderings: (+19,+18,+17)
                 └── filters (true)
 
 opt format=hide-qual
@@ -233,7 +243,7 @@ insert new_order
  ├── cardinality: [0 - 0]
  ├── side-effects, mutations
  ├── stats: [rows=0]
- ├── cost: 6.14975196
+ ├── cost: 1.21447529
  ├── values
  │    ├── columns: column1:4(int!null) column2:5(int!null) column3:6(int!null)
  │    ├── cardinality: [1 - 1]
@@ -248,25 +258,35 @@ insert new_order
  │         └── const: 10 [type=int]
  └── f-k-checks
       └── f-k-checks-item: new_order(no_w_id,no_d_id,no_o_id) -> order(o_w_id,o_d_id,o_id)
-           └── anti-join (lookup order)
+           └── anti-join (hash)
                 ├── columns: column3:15(int!null) column2:16(int!null) column1:17(int!null)
-                ├── key columns: [15 16 17] = [9 8 7]
                 ├── cardinality: [0 - 1]
-                ├── stats: [rows=1e-10]
-                ├── cost: 6.11975196
+                ├── stats: [rows=0]
+                ├── cost: 1.18447529
                 ├── key: ()
-                ├── fd: ()-->(4-6), (6)-->(15), (5)-->(16), (4)-->(17)
-                ├── with-scan &1
+                ├── fd: ()-->(15-17)
+                ├── prune: (15-17)
+                ├── values
                 │    ├── columns: column3:15(int!null) column2:16(int!null) column1:17(int!null)
-                │    ├── mapping:
-                │    │    ├──  column3:6(int) => column3:15(int)
-                │    │    ├──  column2:5(int) => column2:16(int)
-                │    │    └──  column1:4(int) => column1:17(int)
                 │    ├── cardinality: [1 - 1]
                 │    ├── stats: [rows=1]
-                │    ├── cost: 0.01
+                │    ├── cost: 0.02
                 │    ├── key: ()
-                │    └── fd: ()-->(4-6), (6)-->(15), (5)-->(16), (4)-->(17)
+                │    ├── fd: ()-->(15-17)
+                │    ├── prune: (15-17)
+                │    └── tuple [type=tuple{int, int, int}]
+                │         ├── const: 10 [type=int]
+                │         ├── const: 100 [type=int]
+                │         └── const: 2000 [type=int]
+                ├── scan "order"
+                │    ├── columns: o_id:7(int!null) o_d_id:8(int!null) o_w_id:9(int!null)
+                │    ├── constraint: /9/8/-7: [/10/100/2000 - /10/100/2000]
+                │    ├── cardinality: [0 - 1]
+                │    ├── stats: [rows=0.99514311, distinct(7)=0.99514311, null(7)=0, distinct(8)=0.99514311, null(8)=0, distinct(9)=0.99514311, null(9)=0]
+                │    ├── cost: 1.11460885
+                │    ├── key: ()
+                │    ├── fd: ()-->(7-9)
+                │    └── interesting orderings: (+9,+8,-7)
                 └── filters (true)
 
 opt format=hide-qual

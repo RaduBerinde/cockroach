@@ -1299,20 +1299,11 @@ func (mb *mutationBuilder) addDeletionCheck(
 func (mb *mutationBuilder) projectOrdinals(
 	ords []scopeOrdinal,
 ) (_ memo.RelExpr, outCols opt.ColList) {
-	outCols = make(opt.ColList, len(ords))
 	inCols := make(opt.ColList, len(ords))
 	for i := 0; i < len(ords); i++ {
-		c := mb.b.factory.Metadata().ColumnMeta(mb.outScope.cols[ords[i]].id)
-		outCols[i] = mb.md.AddColumn(c.Alias, c.Type)
 		inCols[i] = mb.outScope.cols[ords[i]].id
 	}
-	out := mb.b.factory.ConstructWithScan(&memo.WithScanPrivate{
-		ID:           mb.withID,
-		InCols:       inCols,
-		OutCols:      outCols,
-		BindingProps: mb.outScope.expr.Relational(),
-	})
-	return out, outCols
+	return mb.makeFKInputScan(inCols)
 }
 
 // makeFKInputScan constructs a WithScan that iterates over the input to the
@@ -1320,20 +1311,46 @@ func (mb *mutationBuilder) projectOrdinals(
 // violations.
 func (mb *mutationBuilder) makeFKInputScan(
 	inputCols opt.ColList,
-) (scan memo.RelExpr, outCols opt.ColList) {
+) (_ memo.RelExpr, outCols opt.ColList) {
 	// Set up a WithScan; for this we have to synthesize new columns.
 	outCols = make(opt.ColList, len(inputCols))
 	for i := 0; i < len(inputCols); i++ {
 		c := mb.b.factory.Metadata().ColumnMeta(inputCols[i])
 		outCols[i] = mb.md.AddColumn(c.Alias, c.Type)
 	}
-	scan = mb.b.factory.ConstructWithScan(&memo.WithScanPrivate{
+
+	if values, ok := mb.outScope.expr.(*memo.ValuesExpr); ok && !values.Relational().CanHaveSideEffects {
+		var m util.FastIntMap
+		for i, c := range values.Cols {
+			m.Set(int(c), i)
+		}
+		newRows := make(memo.ScalarListExpr, len(values.Rows))
+
+		for irow, row := range values.Rows {
+			tuple := row.(*memo.TupleExpr)
+			typ := tuple.DataType()
+
+			newContents := make([]types.T, len(inputCols))
+			newElems := make(memo.ScalarListExpr, len(inputCols))
+			for j := range inputCols {
+				ord, _ := m.Get(int(inputCols[j]))
+				newContents[j] = typ.TupleContents()[ord]
+				newElems[j] = tuple.Elems[ord]
+			}
+			newRows[irow] = mb.b.factory.ConstructTuple(newElems, types.MakeTuple(newContents))
+		}
+		return mb.b.factory.ConstructValues(newRows, &memo.ValuesPrivate{
+			Cols: outCols,
+			ID:   mb.b.factory.Metadata().NextValuesID(),
+		}), outCols
+	}
+
+	return mb.b.factory.ConstructWithScan(&memo.WithScanPrivate{
 		ID:           mb.withID,
 		InCols:       inputCols,
 		OutCols:      outCols,
 		BindingProps: mb.outScope.expr.Relational(),
-	})
-	return scan, outCols
+	}), outCols
 }
 
 // findNotNullIndexCol finds the first not-null column in the given index and
