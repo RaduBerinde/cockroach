@@ -47,7 +47,7 @@ syn keyword operator Avg BoolAnd BoolOr ConcatAgg Count CountRows Max Min SumInt
 syn keyword operator Variance StdDev XorAgg JsonAgg JsonbAgg ConstAgg ConstNotNullAgg
 syn keyword operator AnyNotNullAgg FirstAgg AggDistinct ScalarList
 syn keyword operator Scan ScanPrivate VirtualScan VirtualScanPrivate Values Select Project
-syn keyword operator InnerJoin LeftJoin RightJoin FullJoin SemiJoin AntiJoin
+syn keyword operator InnerJoin LeftJoin FullJoin SemiJoin AntiJoin
 syn keyword operator IndexJoin IndexJoinPrivate LookupJoin LookupJoinPrivate
 syn keyword operator MergeJoin MergeJoinPrivate
 syn keyword operator InnerJoinApply LeftJoinApply

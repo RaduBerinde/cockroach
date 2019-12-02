@@ -31,9 +31,6 @@ func mergeJoinCanProvideOrdering(expr memo.RelExpr, required *physical.OrderingC
 	case opt.LeftJoinOp, opt.SemiJoinOp, opt.AntiJoinOp:
 		return m.LeftOrdering.Implies(required)
 
-	case opt.RightJoinOp:
-		return m.RightOrdering.Implies(required)
-
 	default:
 		return false
 	}
@@ -68,9 +65,6 @@ func mergeJoinBuildProvided(expr memo.RelExpr, required *physical.OrderingChoice
 
 	case opt.LeftJoinOp, opt.SemiJoinOp, opt.AntiJoinOp:
 		provided = m.Left.ProvidedPhysical().Ordering
-
-	case opt.RightJoinOp:
-		provided = m.Right.ProvidedPhysical().Ordering
 	}
 	// The input's ordering satisfies both <required> and the ordering required by
 	// the merge join itself; it may need to be trimmed.

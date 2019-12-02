@@ -113,24 +113,10 @@ sort
  └── project
       ├── columns: format_type:65(string) pg_get_expr:66(string) collname:67(string) comment:68(string) attname:2(string!null) atttypid:3(oid!null) attnum:6(int!null) atttypmod:9(int!null) attnotnull:13(bool!null)
       ├── fd: (3,9)-->(65)
-      ├── right-join (hash, store right)
+      ├── left-join (hash, store left)
       │    ├── columns: attrelid:1(oid!null) attname:2(string!null) atttypid:3(oid!null) attnum:6(int!null) atttypmod:9(int!null) attnotnull:13(bool!null) attisdropped:15(bool!null) attcollation:18(oid!null) adrelid:23(oid) adnum:24(int) adbin:25(string) c.oid:27(oid) c.collname:28(string) t.oid:34(oid) typcollation:61(oid)
       │    ├── key: (1,6,23,24,27,34)
       │    ├── fd: ()-->(15), (1,6)-->(2,3,9,13,18), (1,2)-->(3,6,9,13,18), (23,24)-->(25), (27)-->(28), (34)-->(61)
-      │    ├── inner-join (hash, store right)
-      │    │    ├── columns: c.oid:27(oid!null) c.collname:28(string!null) t.oid:34(oid!null) typcollation:61(oid!null)
-      │    │    ├── key: (27,34)
-      │    │    ├── fd: (27)-->(28), (34)-->(61)
-      │    │    ├── scan c@pg_collation_name_enc_nsp_index
-      │    │    │    ├── columns: c.oid:27(oid!null) c.collname:28(string!null)
-      │    │    │    ├── key: (27)
-      │    │    │    └── fd: (27)-->(28)
-      │    │    ├── scan t
-      │    │    │    ├── columns: t.oid:34(oid!null) typcollation:61(oid!null)
-      │    │    │    ├── key: (34)
-      │    │    │    └── fd: (34)-->(61)
-      │    │    └── filters
-      │    │         └── c.oid != typcollation [type=bool, outer=(27,61), constraints=(/27: (/NULL - ]; /61: (/NULL - ])]
       │    ├── left-join (lookup pg_attrdef)
       │    │    ├── columns: attrelid:1(oid!null) attname:2(string!null) atttypid:3(oid!null) attnum:6(int!null) atttypmod:9(int!null) attnotnull:13(bool!null) attisdropped:15(bool!null) attcollation:18(oid!null) adrelid:23(oid) adnum:24(int) adbin:25(string)
       │    │    ├── key columns: [22] = [22]
@@ -157,6 +143,20 @@ sort
       │    │    │         ├── adrelid = '"numbers"'::REGCLASS [type=bool, outer=(23), constraints=(/23: (/NULL - ])]
       │    │    │         └── adnum > 0 [type=bool, outer=(24), constraints=(/24: [/1 - ]; tight)]
       │    │    └── filters (true)
+      │    ├── inner-join (hash, store right)
+      │    │    ├── columns: c.oid:27(oid!null) c.collname:28(string!null) t.oid:34(oid!null) typcollation:61(oid!null)
+      │    │    ├── key: (27,34)
+      │    │    ├── fd: (27)-->(28), (34)-->(61)
+      │    │    ├── scan c@pg_collation_name_enc_nsp_index
+      │    │    │    ├── columns: c.oid:27(oid!null) c.collname:28(string!null)
+      │    │    │    ├── key: (27)
+      │    │    │    └── fd: (27)-->(28)
+      │    │    ├── scan t
+      │    │    │    ├── columns: t.oid:34(oid!null) typcollation:61(oid!null)
+      │    │    │    ├── key: (34)
+      │    │    │    └── fd: (34)-->(61)
+      │    │    └── filters
+      │    │         └── c.oid != typcollation [type=bool, outer=(27,61), constraints=(/27: (/NULL - ]; /61: (/NULL - ])]
       │    └── filters
       │         ├── c.oid = attcollation [type=bool, outer=(18,27), constraints=(/18: (/NULL - ]; /27: (/NULL - ]), fd=(18)==(27), (27)==(18)]
       │         └── t.oid = atttypid [type=bool, outer=(3,34), constraints=(/3: (/NULL - ]; /34: (/NULL - ]), fd=(3)==(34), (34)==(3)]

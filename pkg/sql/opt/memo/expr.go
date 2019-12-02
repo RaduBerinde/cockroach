@@ -530,3 +530,18 @@ func ExprIsNeverNull(e opt.ScalarExpr, notNullCols opt.ColSet) bool {
 		return false
 	}
 }
+
+// ShouldCommuteHashJoin returns true if a join expression should be commuted
+// before execution, under the assumption that the right side is the stored
+// side. Currently this can only be true for LeftJoin (when the left side has a
+// smaller estimated row count). For other joins we have both expressions as
+// candidates (thanks to the CommuteJoin rule).
+func ShouldCommuteHashJoin(join RelExpr) bool {
+	// TODO(radu): look into removing CommuteJoin and using this more broadly.
+	if join.Op() != opt.LeftJoinOp {
+		return false
+	}
+	leftRowCount := join.Child(0).(RelExpr).Relational().Stats.RowCount
+	rightRowCount := join.Child(1).(RelExpr).Relational().Stats.RowCount
+	return leftRowCount < rightRowCount
+}

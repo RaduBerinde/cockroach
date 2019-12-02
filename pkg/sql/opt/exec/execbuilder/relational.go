@@ -741,6 +741,18 @@ func (b *Builder) buildHashJoin(join memo.RelExpr) (execPlan, error) {
 	rightExpr := join.Child(1).(memo.RelExpr)
 	filters := join.Child(2).(*memo.FiltersExpr)
 
+	if memo.ShouldCommuteHashJoin(join) {
+		// Commute the join.
+		switch joinType {
+		case sqlbase.LeftOuterJoin:
+			joinType = sqlbase.RightOuterJoin
+
+		default:
+			panic(errors.AssertionFailedf("unexpected join type %s", log.Safe(joinType)))
+		}
+		leftExpr, rightExpr = rightExpr, leftExpr
+	}
+
 	leftEq, rightEq := memo.ExtractJoinEqualityColumns(
 		leftExpr.Relational().OutputCols,
 		rightExpr.Relational().OutputCols,
@@ -867,9 +879,6 @@ func joinOpToJoinType(op opt.Operator) sqlbase.JoinType {
 
 	case opt.LeftJoinOp, opt.LeftJoinApplyOp:
 		return sqlbase.LeftOuterJoin
-
-	case opt.RightJoinOp:
-		return sqlbase.RightOuterJoin
 
 	case opt.FullJoinOp:
 		return sqlbase.FullOuterJoin

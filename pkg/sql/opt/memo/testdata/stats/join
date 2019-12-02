@@ -114,7 +114,7 @@ inner-join (hash, store right)
 build
 SELECT *, rowid FROM xysd LEFT JOIN uv ON x=u
 ----
-left-join (hash, store right)
+left-join (hash, store left)
  ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) u:5(int) v:6(int) rowid:7(int)
  ├── stats: [rows=10000, distinct(5)=500, null(5)=0]
  ├── key: (1,7)
@@ -135,21 +135,21 @@ left-join (hash, store right)
 build
 SELECT *, rowid FROM xysd RIGHT JOIN uv ON x=u
 ----
-right-join (hash, store right)
+left-join (hash, store right)
  ├── columns: x:1(int) y:2(int) s:3(string) d:4(decimal) u:5(int) v:6(int!null) rowid:7(int!null)
  ├── stats: [rows=10000, distinct(1)=500, null(1)=0]
  ├── key: (1,7)
- ├── fd: (1)-->(2-4), (3,4)~~>(1,2), (7)-->(5,6)
- ├── scan xysd
- │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null)
- │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0]
- │    ├── key: (1)
- │    └── fd: (1)-->(2-4), (3,4)~~>(1,2)
+ ├── fd: (7)-->(5,6), (1)-->(2-4), (3,4)~~>(1,2)
  ├── scan uv
  │    ├── columns: u:5(int) v:6(int!null) rowid:7(int!null)
  │    ├── stats: [rows=10000, distinct(5)=500, null(5)=0, distinct(6)=100, null(6)=0, distinct(7)=10000, null(7)=0]
  │    ├── key: (7)
  │    └── fd: (7)-->(5,6)
+ ├── scan xysd
+ │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null)
+ │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0]
+ │    ├── key: (1)
+ │    └── fd: (1)-->(2-4), (3,4)~~>(1,2)
  └── filters
       └── x = u [type=bool, outer=(1,5), constraints=(/1: (/NULL - ]; /5: (/NULL - ]), fd=(1)==(5), (5)==(1)]
 
@@ -480,7 +480,7 @@ project
       ├── stats: [rows=400, distinct(2)=400, null(2)=0]
       ├── key: (2)
       ├── fd: (2)-->(8)
-      ├── left-join (hash, store right)
+      ├── left-join (hash, store left)
       │    ├── columns: x:1(int!null) y:2(int) u:5(int) v:6(int)
       │    ├── stats: [rows=5000, distinct(2)=400, null(2)=0, distinct(5)=500, null(5)=1666.66667]
       │    ├── fd: (1)-->(2)
@@ -513,18 +513,18 @@ project
       ├── stats: [rows=399.903879, distinct(2)=399.903879, null(2)=399.903879]
       ├── key: (2)
       ├── fd: (2)-->(8)
-      ├── right-join (hash, store right)
+      ├── left-join (hash, store right)
       │    ├── columns: x:1(int) y:2(int) u:5(int) v:6(int!null)
       │    ├── stats: [rows=10000, distinct(1)=500, null(1)=6666.66667, distinct(2)=399.903879, null(2)=6666.66667]
       │    ├── fd: (1)-->(2)
+      │    ├── scan uv
+      │    │    ├── columns: u:5(int) v:6(int!null)
+      │    │    └── stats: [rows=10000, distinct(5)=500, null(5)=0, distinct(6)=100, null(6)=0]
       │    ├── scan xysd
       │    │    ├── columns: x:1(int!null) y:2(int)
       │    │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(2)=400, null(2)=0]
       │    │    ├── key: (1)
       │    │    └── fd: (1)-->(2)
-      │    ├── scan uv
-      │    │    ├── columns: u:5(int) v:6(int!null)
-      │    │    └── stats: [rows=10000, distinct(5)=500, null(5)=0, distinct(6)=100, null(6)=0]
       │    └── filters
       │         ├── x = u [type=bool, outer=(1,5), constraints=(/1: (/NULL - ]; /5: (/NULL - ]), fd=(1)==(5), (5)==(1)]
       │         └── (y + v) = 5 [type=bool, outer=(2,6)]
@@ -695,7 +695,7 @@ inner-join (hash, store right)
 build colstat=2 colstat=(1,2,7) colstat=(2,3) colstat=3 colstat=(3,5) colstat=5
 SELECT *, rowid FROM xysd LEFT JOIN uv ON x=u
 ----
-left-join (hash, store right)
+left-join (hash, store left)
  ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) u:5(int) v:6(int) rowid:7(int)
  ├── stats: [rows=10000, distinct(2)=400, null(2)=5000, distinct(3)=500, null(3)=100, distinct(5)=500, null(5)=0, distinct(2,3)=5000, null(2,3)=5050, distinct(3,5)=10000, null(3,5)=5050, distinct(1,2,7)=10000, null(1,2,7)=5000]
  ├── key: (1,7)
@@ -716,21 +716,21 @@ left-join (hash, store right)
 build colstat=2 colstat=(1,2,7) colstat=(2,3) colstat=3 colstat=(3,5) colstat=5
 SELECT *, rowid FROM xysd RIGHT JOIN uv ON x=u
 ----
-right-join (hash, store right)
+left-join (hash, store right)
  ├── columns: x:1(int) y:2(int) s:3(string) d:4(decimal) u:5(int) v:6(int!null) rowid:7(int!null)
  ├── stats: [rows=10000, distinct(1)=500, null(1)=0, distinct(2)=400, null(2)=5000, distinct(3)=499.999999, null(3)=100, distinct(5)=500, null(5)=5000, distinct(2,3)=4323.45892, null(2,3)=5050, distinct(3,5)=10000, null(3,5)=5050, distinct(1,2,7)=10000, null(1,2,7)=5000]
  ├── key: (1,7)
- ├── fd: (1)-->(2-4), (3,4)~~>(1,2), (7)-->(5,6)
- ├── scan xysd
- │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null)
- │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(2)=400, null(2)=2500, distinct(3)=500, null(3)=50, distinct(1,2)=2501, null(1,2)=2500, distinct(2,3)=5000, null(2,3)=2525]
- │    ├── key: (1)
- │    └── fd: (1)-->(2-4), (3,4)~~>(1,2)
+ ├── fd: (7)-->(5,6), (1)-->(2-4), (3,4)~~>(1,2)
  ├── scan uv
  │    ├── columns: u:5(int) v:6(int!null) rowid:7(int!null)
  │    ├── stats: [rows=10000, distinct(5)=500, null(5)=5000, distinct(6)=100, null(6)=0, distinct(7)=10000, null(7)=0]
  │    ├── key: (7)
  │    └── fd: (7)-->(5,6)
+ ├── scan xysd
+ │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null)
+ │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(2)=400, null(2)=2500, distinct(3)=500, null(3)=50, distinct(1,2)=2501, null(1,2)=2500, distinct(2,3)=5000, null(2,3)=2525]
+ │    ├── key: (1)
+ │    └── fd: (1)-->(2-4), (3,4)~~>(1,2)
  └── filters
       └── x = u [type=bool, outer=(1,5), constraints=(/1: (/NULL - ]; /5: (/NULL - ]), fd=(1)==(5), (5)==(1)]
 
@@ -1041,18 +1041,12 @@ values
 norm
 SELECT * FROM (SELECT 1 WHERE false) RIGHT JOIN (SELECT 1) ON true
 ----
-right-join (hash, store right)
+left-join (hash, store right)
  ├── columns: "?column?":1(int) "?column?":2(int!null)
  ├── cardinality: [1 - 1]
  ├── stats: [rows=1]
  ├── key: ()
  ├── fd: ()-->(1,2)
- ├── values
- │    ├── columns: "?column?":1(int!null)
- │    ├── cardinality: [0 - 0]
- │    ├── stats: [rows=0]
- │    ├── key: ()
- │    └── fd: ()-->(1)
  ├── values
  │    ├── columns: "?column?":2(int!null)
  │    ├── cardinality: [1 - 1]
@@ -1060,23 +1054,23 @@ right-join (hash, store right)
  │    ├── key: ()
  │    ├── fd: ()-->(2)
  │    └── (1,) [type=tuple{int}]
+ ├── values
+ │    ├── columns: "?column?":1(int!null)
+ │    ├── cardinality: [0 - 0]
+ │    ├── stats: [rows=0]
+ │    ├── key: ()
+ │    └── fd: ()-->(1)
  └── filters (true)
 
 norm
 SELECT * FROM (SELECT 1 WHERE false) FULL JOIN (SELECT 1) ON true
 ----
-right-join (hash, store right)
+left-join (hash, store right)
  ├── columns: "?column?":1(int) "?column?":2(int!null)
  ├── cardinality: [1 - 1]
  ├── stats: [rows=1]
  ├── key: ()
  ├── fd: ()-->(1,2)
- ├── values
- │    ├── columns: "?column?":1(int!null)
- │    ├── cardinality: [0 - 0]
- │    ├── stats: [rows=0]
- │    ├── key: ()
- │    └── fd: ()-->(1)
  ├── values
  │    ├── columns: "?column?":2(int!null)
  │    ├── cardinality: [1 - 1]
@@ -1084,6 +1078,12 @@ right-join (hash, store right)
  │    ├── key: ()
  │    ├── fd: ()-->(2)
  │    └── (1,) [type=tuple{int}]
+ ├── values
+ │    ├── columns: "?column?":1(int!null)
+ │    ├── cardinality: [0 - 0]
+ │    ├── stats: [rows=0]
+ │    ├── key: ()
+ │    └── fd: ()-->(1)
  └── filters (true)
 
 norm
@@ -1095,18 +1095,18 @@ inner-join (hash, store right)
  ├── stats: [rows=2]
  ├── fd: ()-->(1)
  ├── values
+ │    ├── columns: column1:2(int!null)
+ │    ├── cardinality: [2 - 2]
+ │    ├── stats: [rows=2]
+ │    ├── (1,) [type=tuple{int}]
+ │    └── (2,) [type=tuple{int}]
+ ├── values
  │    ├── columns: "?column?":1(int!null)
  │    ├── cardinality: [1 - 1]
  │    ├── stats: [rows=1]
  │    ├── key: ()
  │    ├── fd: ()-->(1)
  │    └── (1,) [type=tuple{int}]
- ├── values
- │    ├── columns: column1:2(int!null)
- │    ├── cardinality: [2 - 2]
- │    ├── stats: [rows=2]
- │    ├── (1,) [type=tuple{int}]
- │    └── (2,) [type=tuple{int}]
  └── filters (true)
 
 exec-ddl

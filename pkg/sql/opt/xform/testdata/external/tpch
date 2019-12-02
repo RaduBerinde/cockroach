@@ -1417,10 +1417,13 @@ sort
       │    ├── grouping columns: c_custkey:1(int!null)
       │    ├── key: (1)
       │    ├── fd: (1)-->(18)
-      │    ├── right-join (hash, store right)
+      │    ├── left-join (hash, store left)
       │    │    ├── columns: c_custkey:1(int!null) o_orderkey:9(int) o_custkey:10(int) o_comment:17(varchar)
       │    │    ├── key: (1,9)
       │    │    ├── fd: (9)-->(10,17)
+      │    │    ├── scan customer@c_nk
+      │    │    │    ├── columns: c_custkey:1(int!null)
+      │    │    │    └── key: (1)
       │    │    ├── select
       │    │    │    ├── columns: o_orderkey:9(int!null) o_custkey:10(int!null) o_comment:17(varchar!null)
       │    │    │    ├── key: (9)
@@ -1431,9 +1434,6 @@ sort
       │    │    │    │    └── fd: (9)-->(10,17)
       │    │    │    └── filters
       │    │    │         └── o_comment NOT LIKE '%special%requests%' [type=bool, outer=(17), constraints=(/17: (/NULL - ])]
-      │    │    ├── scan customer@c_nk
-      │    │    │    ├── columns: c_custkey:1(int!null)
-      │    │    │    └── key: (1)
       │    │    └── filters
       │    │         └── c_custkey = o_custkey [type=bool, outer=(1,10), constraints=(/1: (/NULL - ]; /10: (/NULL - ]), fd=(1)==(10), (10)==(1)]
       │    └── aggregations
@@ -2136,9 +2136,13 @@ sort
            │    │              │    │    ├── grouping columns: ps_partkey:12(int!null) ps_suppkey:13(int!null)
            │    │              │    │    ├── key: (12,13)
            │    │              │    │    ├── fd: (12,13)-->(14,42)
-           │    │              │    │    ├── right-join (hash, store right)
+           │    │              │    │    ├── left-join (hash, store left)
            │    │              │    │    │    ├── columns: ps_partkey:12(int!null) ps_suppkey:13(int!null) ps_availqty:14(int!null) l_partkey:27(int) l_suppkey:28(int) l_quantity:30(float) l_shipdate:36(date)
            │    │              │    │    │    ├── fd: (12,13)-->(14)
+           │    │              │    │    │    ├── scan partsupp
+           │    │              │    │    │    │    ├── columns: ps_partkey:12(int!null) ps_suppkey:13(int!null) ps_availqty:14(int!null)
+           │    │              │    │    │    │    ├── key: (12,13)
+           │    │              │    │    │    │    └── fd: (12,13)-->(14)
            │    │              │    │    │    ├── index-join lineitem
            │    │              │    │    │    │    ├── columns: l_partkey:27(int!null) l_suppkey:28(int!null) l_quantity:30(float!null) l_shipdate:36(date!null)
            │    │              │    │    │    │    └── scan lineitem@l_sd
@@ -2146,10 +2150,6 @@ sort
            │    │              │    │    │    │         ├── constraint: /36/26/29: [/'1994-01-01' - /'1994-12-31']
            │    │              │    │    │    │         ├── key: (26,29)
            │    │              │    │    │    │         └── fd: (26,29)-->(36)
-           │    │              │    │    │    ├── scan partsupp
-           │    │              │    │    │    │    ├── columns: ps_partkey:12(int!null) ps_suppkey:13(int!null) ps_availqty:14(int!null)
-           │    │              │    │    │    │    ├── key: (12,13)
-           │    │              │    │    │    │    └── fd: (12,13)-->(14)
            │    │              │    │    │    └── filters
            │    │              │    │    │         ├── l_partkey = ps_partkey [type=bool, outer=(12,27), constraints=(/12: (/NULL - ]; /27: (/NULL - ]), fd=(12)==(27), (27)==(12)]
            │    │              │    │    │         └── l_suppkey = ps_suppkey [type=bool, outer=(13,28), constraints=(/13: (/NULL - ]; /28: (/NULL - ]), fd=(13)==(28), (28)==(13)]

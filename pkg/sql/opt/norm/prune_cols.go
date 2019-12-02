@@ -459,7 +459,7 @@ func DerivePruneCols(e memo.RelExpr) opt.ColSet {
 		// used in a higher-level expression.
 		relProps.Rule.PruneCols = relProps.OutputCols.Copy()
 
-	case opt.InnerJoinOp, opt.LeftJoinOp, opt.RightJoinOp, opt.FullJoinOp,
+	case opt.InnerJoinOp, opt.LeftJoinOp, opt.FullJoinOp,
 		opt.SemiJoinOp, opt.AntiJoinOp, opt.InnerJoinApplyOp, opt.LeftJoinApplyOp,
 		opt.SemiJoinApplyOp, opt.AntiJoinApplyOp:
 		// Any pruneable columns from projected inputs can potentially be pruned, as

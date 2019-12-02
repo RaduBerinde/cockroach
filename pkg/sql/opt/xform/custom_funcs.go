@@ -993,12 +993,18 @@ func (c *CustomFuncs) GenerateMergeJoins(
 	orders := DeriveInterestingOrderings(left).Copy()
 	orders.RestrictToCols(leftEq.ToSet())
 
-	if joinPrivate.Flags.DisallowHashJoin {
-		// If we are using a hint, CommuteJoin won't run. Add the orderings
-		// from the right side.
+	if joinPrivate.Flags.DisallowHashJoin || originalOp == opt.LeftJoinOp {
 		rightOrders := DeriveInterestingOrderings(right).Copy()
 		rightOrders.RestrictToCols(leftEq.ToSet())
 		orders = append(orders, rightOrders...)
+	}
+
+	if joinPrivate.Flags.DisallowHashJoin {
+		//// If we are using a hint, CommuteJoin won't run. Add the orderings
+		//// from the right side.
+		//rightOrders := DeriveInterestingOrderings(right).Copy()
+		//rightOrders.RestrictToCols(leftEq.ToSet())
+		//orders = append(orders, rightOrders...)
 
 		// Also append an arbitrary ordering (in case the interesting orderings
 		// don't result in any merge joins).

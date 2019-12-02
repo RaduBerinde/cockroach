@@ -462,9 +462,9 @@ rules. For example:
     Filter Expr
   }
 
-  (Select $input:(LeftJoin | RightJoin) $filter:*) => $input
+  (Select $input:(InnerJoin | LeftJoin) $filter:*) => $input
 
-The type of $input is inferred as "LeftJoin | RightJoin" by bubbling up the type
+The type of $input is inferred as "InnerJoin | LeftJoin" by bubbling up the type
 of the bound expression. That type is propagated to the $input reference in the
 replace pattern. By contrast, the type of the * expression is inferred to be
 "Expr" using a top-down type inference rule, since the second argument to the

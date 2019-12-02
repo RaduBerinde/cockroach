@@ -290,34 +290,6 @@ project
                 ├── variable: u [type=int]
                 └── null [type=unknown]
 
-# Right-join.
-build
-SELECT *, rowid FROM xysd RIGHT JOIN uv ON x=u
-----
-right-join (hash, store right)
- ├── columns: x:1(int) y:2(int) s:3(string) d:4(decimal) u:5(int) v:6(int!null) rowid:7(int!null)
- ├── key: (1,7)
- ├── fd: (1)-->(2-4), (3,4)~~>(1,2), (7)-->(5,6)
- ├── prune: (2-4,6,7)
- ├── reject-nulls: (1-4)
- ├── interesting orderings: (+1) (-3,+4,+1) (+7)
- ├── scan xysd
- │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null)
- │    ├── key: (1)
- │    ├── fd: (1)-->(2-4), (3,4)~~>(1,2)
- │    ├── prune: (1-4)
- │    └── interesting orderings: (+1) (-3,+4,+1)
- ├── scan uv
- │    ├── columns: u:5(int) v:6(int!null) rowid:7(int!null)
- │    ├── key: (7)
- │    ├── fd: (7)-->(5,6)
- │    ├── prune: (5-7)
- │    └── interesting orderings: (+7)
- └── filters
-      └── eq [type=bool, outer=(1,5), constraints=(/1: (/NULL - ]; /5: (/NULL - ]), fd=(1)==(5), (5)==(1)]
-           ├── variable: x [type=int]
-           └── variable: u [type=int]
-
 # Full-join.
 build
 SELECT *, rowid FROM xysd FULL JOIN uv ON x=u
@@ -819,44 +791,6 @@ left-join (hash, store right)
  └── filters
       └── true [type=bool]
 
-# Calculate right-join cardinality.
-build
-SELECT * FROM (SELECT * FROM uv LIMIT 2) RIGHT JOIN (VALUES (1), (2), (3)) ON True
-----
-right-join (hash, store right)
- ├── columns: u:1(int) v:2(int) column1:4(int!null)
- ├── cardinality: [3 - 6]
- ├── prune: (1,2,4)
- ├── reject-nulls: (1,2)
- ├── limit
- │    ├── columns: u:1(int) v:2(int!null)
- │    ├── cardinality: [0 - 2]
- │    ├── prune: (1,2)
- │    ├── project
- │    │    ├── columns: u:1(int) v:2(int!null)
- │    │    ├── limit hint: 2.00
- │    │    ├── prune: (1,2)
- │    │    └── scan uv
- │    │         ├── columns: u:1(int) v:2(int!null) rowid:3(int!null)
- │    │         ├── key: (3)
- │    │         ├── fd: (3)-->(1,2)
- │    │         ├── limit hint: 2.00
- │    │         ├── prune: (1-3)
- │    │         └── interesting orderings: (+3)
- │    └── const: 2 [type=int]
- ├── values
- │    ├── columns: column1:4(int!null)
- │    ├── cardinality: [3 - 3]
- │    ├── prune: (4)
- │    ├── tuple [type=tuple{int}]
- │    │    └── const: 1 [type=int]
- │    ├── tuple [type=tuple{int}]
- │    │    └── const: 2 [type=int]
- │    └── tuple [type=tuple{int}]
- │         └── const: 3 [type=int]
- └── filters
-      └── true [type=bool]
-
 # Calculate full-join cardinality.
 build
 SELECT * FROM (VALUES (NULL), (NULL)) a FULL JOIN (VALUES (NULL), (NULL)) b ON True
@@ -1075,94 +1009,6 @@ left-join (hash, store right)
  └── filters
       └── true [type=bool]
 
-# Nullable FD determinant on left side of right-join becomes lax.
-build
-SELECT * FROM (SELECT u, sum(v) FROM uv GROUP BY u) RIGHT JOIN xysd ON u IS NOT NULL
-----
-right-join (hash, store right)
- ├── columns: u:1(int) sum:4(decimal) x:5(int!null) y:6(int) s:7(string) d:8(decimal!null)
- ├── key: (1,5)
- ├── fd: (5)-->(6-8), (7,8)~~>(5,6), (1)~~>(4), (1,5)-->(4)
- ├── prune: (4-8)
- ├── reject-nulls: (1,4)
- ├── interesting orderings: (+5) (-7,+8,+5)
- ├── group-by
- │    ├── columns: u:1(int) sum:4(decimal)
- │    ├── grouping columns: u:1(int)
- │    ├── key: (1)
- │    ├── fd: (1)-->(4)
- │    ├── prune: (4)
- │    ├── project
- │    │    ├── columns: u:1(int) v:2(int!null)
- │    │    ├── prune: (1,2)
- │    │    └── scan uv
- │    │         ├── columns: u:1(int) v:2(int!null) rowid:3(int!null)
- │    │         ├── key: (3)
- │    │         ├── fd: (3)-->(1,2)
- │    │         ├── prune: (1-3)
- │    │         └── interesting orderings: (+3)
- │    └── aggregations
- │         └── sum [type=decimal, outer=(2)]
- │              └── variable: v [type=int]
- ├── scan xysd
- │    ├── columns: x:5(int!null) y:6(int) s:7(string) d:8(decimal!null)
- │    ├── key: (5)
- │    ├── fd: (5)-->(6-8), (7,8)~~>(5,6)
- │    ├── prune: (5-8)
- │    └── interesting orderings: (+5) (-7,+8,+5)
- └── filters
-      └── is-not [type=bool, outer=(1), constraints=(/1: (/NULL - ]; tight)]
-           ├── variable: u [type=int]
-           └── null [type=unknown]
-
-# Not-null FD determinant on left side of right-join stays strict.
-build
-SELECT * FROM (SELECT u, sum(v) FROM uv WHERE u IS NOT NULL GROUP BY u) RIGHT JOIN xysd ON True
-----
-right-join (hash, store right)
- ├── columns: u:1(int) sum:4(decimal) x:5(int!null) y:6(int) s:7(string) d:8(decimal!null)
- ├── key: (1,5)
- ├── fd: (1)-->(4), (5)-->(6-8), (7,8)~~>(5,6)
- ├── prune: (4-8)
- ├── reject-nulls: (1,4)
- ├── interesting orderings: (+5) (-7,+8,+5)
- ├── group-by
- │    ├── columns: u:1(int!null) sum:4(decimal)
- │    ├── grouping columns: u:1(int!null)
- │    ├── key: (1)
- │    ├── fd: (1)-->(4)
- │    ├── prune: (4)
- │    ├── project
- │    │    ├── columns: u:1(int!null) v:2(int!null)
- │    │    ├── prune: (1,2)
- │    │    └── select
- │    │         ├── columns: u:1(int!null) v:2(int!null) rowid:3(int!null)
- │    │         ├── key: (3)
- │    │         ├── fd: (3)-->(1,2)
- │    │         ├── prune: (2,3)
- │    │         ├── interesting orderings: (+3)
- │    │         ├── scan uv
- │    │         │    ├── columns: u:1(int) v:2(int!null) rowid:3(int!null)
- │    │         │    ├── key: (3)
- │    │         │    ├── fd: (3)-->(1,2)
- │    │         │    ├── prune: (1-3)
- │    │         │    └── interesting orderings: (+3)
- │    │         └── filters
- │    │              └── is-not [type=bool, outer=(1), constraints=(/1: (/NULL - ]; tight)]
- │    │                   ├── variable: u [type=int]
- │    │                   └── null [type=unknown]
- │    └── aggregations
- │         └── sum [type=decimal, outer=(2)]
- │              └── variable: v [type=int]
- ├── scan xysd
- │    ├── columns: x:5(int!null) y:6(int) s:7(string) d:8(decimal!null)
- │    ├── key: (5)
- │    ├── fd: (5)-->(6-8), (7,8)~~>(5,6)
- │    ├── prune: (5-8)
- │    └── interesting orderings: (+5) (-7,+8,+5)
- └── filters
-      └── true [type=bool]
-
 # Nullable FD determinant on right side of full-join becomes lax.
 build
 SELECT * FROM xysd FULL JOIN (SELECT u, sum(v) FROM uv GROUP BY u) ON u IS NOT NULL
@@ -1320,48 +1166,6 @@ left-join (merge)
  │         ├── key: (7)
  │         └── fd: (7)-->(5,6)
  └── filters (true)
-
-# Merge join (right) with remaining ON condition.
-expr
-(MergeJoin
-    (Scan [ (Table "xysd") (Cols "x,y,s,d") ])
-    (Sort (Scan [ (Table "uv") (Cols "u,v,rowid") ]))
-    [ (Gt (Var "y") (Var "v")) ]
-    [
-        (JoinType "right-join")
-        (LeftEq "+x")
-        (RightEq "+u")
-        (LeftOrdering "+x")
-        (RightOrdering "+u")
-    ]
-)
-----
-right-join (merge)
- ├── columns: x:1(int) y:2(int) s:3(string) d:4(decimal) u:5(int) v:6(int!null) rowid:7(int!null)
- ├── left ordering: +1
- ├── right ordering: +5
- ├── key: (1,7)
- ├── fd: (1)-->(2-4), (3,4)~~>(1,2), (7)-->(5,6)
- ├── scan xysd
- │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null)
- │    ├── key: (1)
- │    ├── fd: (1)-->(2-4), (3,4)~~>(1,2)
- │    ├── ordering: +1
- │    ├── prune: (1-4)
- │    └── interesting orderings: (+1) (-3,+4,+1)
- ├── sort
- │    ├── columns: u:5(int) v:6(int!null) rowid:7(int!null)
- │    ├── key: (7)
- │    ├── fd: (7)-->(5,6)
- │    ├── ordering: +5
- │    └── scan uv
- │         ├── columns: u:5(int) v:6(int!null) rowid:7(int!null)
- │         ├── key: (7)
- │         └── fd: (7)-->(5,6)
- └── filters
-      └── gt [type=bool, outer=(2,6), constraints=(/2: (/NULL - ]; /6: (/NULL - ])]
-           ├── variable: y [type=int]
-           └── variable: v [type=int]
 
 # Regression test #36183.
 opt

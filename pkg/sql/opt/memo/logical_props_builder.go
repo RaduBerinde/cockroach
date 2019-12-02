@@ -332,10 +332,6 @@ func (b *logicalPropsBuilder) buildLeftJoinProps(join *LeftJoinExpr, rel *props.
 	b.buildJoinProps(join, rel)
 }
 
-func (b *logicalPropsBuilder) buildRightJoinProps(join *RightJoinExpr, rel *props.Relational) {
-	b.buildJoinProps(join, rel)
-}
-
 func (b *logicalPropsBuilder) buildFullJoinProps(join *FullJoinExpr, rel *props.Relational) {
 	b.buildJoinProps(join, rel)
 }
@@ -1843,10 +1839,10 @@ func (h *joinPropsHelper) notNullCols() opt.ColSet {
 		notNullCols = h.rightProps.NotNullCols.Copy()
 	}
 
-	// Right/full outer joins can result in left columns becoming null.
-	// Otherwise, propagate not null setting from left child.
+	// Full outer joins can result in left columns becoming null.  Otherwise,
+	// propagate not null setting from left child.
 	switch h.joinType {
-	case opt.RightJoinOp, opt.FullJoinOp:
+	case opt.FullJoinOp:
 
 	default:
 		notNullCols.UnionWith(h.leftProps.NotNullCols)
@@ -1903,9 +1899,6 @@ func (h *joinPropsHelper) setFuncDeps(rel *props.Relational) {
 			// constant columns.
 			rel.FuncDeps.AddFrom(&h.filtersFD)
 			addOuterColsToFuncDep(rel.OuterCols, &rel.FuncDeps)
-
-		case opt.RightJoinOp:
-			rel.FuncDeps.MakeOuter(h.leftProps.OutputCols, notNullInputCols)
 
 		case opt.LeftJoinOp, opt.LeftJoinApplyOp:
 			rel.FuncDeps.MakeOuter(h.rightProps.OutputCols, notNullInputCols)
@@ -1965,9 +1958,6 @@ func (h *joinPropsHelper) cardinality() props.Cardinality {
 	switch h.joinType {
 	case opt.LeftJoinOp, opt.LeftJoinApplyOp:
 		return innerJoinCard.AtLeast(left)
-
-	case opt.RightJoinOp:
-		return innerJoinCard.AtLeast(right)
 
 	case opt.FullJoinOp:
 		if innerJoinCard.IsZero() {

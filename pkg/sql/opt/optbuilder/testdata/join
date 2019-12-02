@@ -183,12 +183,12 @@ SELECT * FROM onecolumn AS a(x) RIGHT OUTER JOIN onecolumn AS b(y) ON a.x = b.y
 ----
 project
  ├── columns: x:1(int) y:3(int)
- └── right-join (hash, store right)
+ └── left-join (hash, store right)
       ├── columns: x:1(int) a.rowid:2(int) y:3(int) b.rowid:4(int!null)
-      ├── scan a
-      │    └── columns: x:1(int) a.rowid:2(int!null)
       ├── scan b
       │    └── columns: y:3(int) b.rowid:4(int!null)
+      ├── scan a
+      │    └── columns: x:1(int) a.rowid:2(int!null)
       └── filters
            └── eq [type=bool]
                 ├── variable: x [type=int]
@@ -202,12 +202,12 @@ sort
  ├── ordering: +3
  └── project
       ├── columns: b.x:3(int)
-      └── right-join (hash, store right)
+      └── left-join (hash, store right)
            ├── columns: a.x:1(int) a.rowid:2(int) b.x:3(int) b.rowid:4(int!null)
-           ├── scan a
-           │    └── columns: a.x:1(int) a.rowid:2(int!null)
            ├── scan b
            │    └── columns: b.x:3(int) b.rowid:4(int!null)
+           ├── scan a
+           │    └── columns: a.x:1(int) a.rowid:2(int!null)
            └── filters
                 └── eq [type=bool]
                      ├── variable: a.x [type=int]
@@ -218,12 +218,12 @@ SELECT * FROM onecolumn AS a NATURAL RIGHT OUTER JOIN onecolumn AS b
 ----
 project
  ├── columns: x:3(int)
- └── right-join (hash, store right)
+ └── left-join (hash, store right)
       ├── columns: a.x:1(int) a.rowid:2(int) b.x:3(int) b.rowid:4(int!null)
-      ├── scan a
-      │    └── columns: a.x:1(int) a.rowid:2(int!null)
       ├── scan b
       │    └── columns: b.x:3(int) b.rowid:4(int!null)
+      ├── scan a
+      │    └── columns: a.x:1(int) a.rowid:2(int!null)
       └── filters
            └── eq [type=bool]
                 ├── variable: a.x [type=int]
@@ -542,12 +542,12 @@ SELECT * FROM onecolumn AS a(x) RIGHT OUTER JOIN empty AS b(y) ON a.x = b.y
 ----
 project
  ├── columns: x:1(int) y:3(int)
- └── right-join (hash, store right)
+ └── left-join (hash, store right)
       ├── columns: x:1(int) a.rowid:2(int) y:3(int) b.rowid:4(int!null)
-      ├── scan a
-      │    └── columns: x:1(int) a.rowid:2(int!null)
       ├── scan b
       │    └── columns: y:3(int) b.rowid:4(int!null)
+      ├── scan a
+      │    └── columns: x:1(int) a.rowid:2(int!null)
       └── filters
            └── eq [type=bool]
                 ├── variable: x [type=int]
@@ -558,12 +558,12 @@ SELECT * FROM onecolumn AS a RIGHT OUTER JOIN empty AS b USING(x)
 ----
 project
  ├── columns: x:3(int)
- └── right-join (hash, store right)
+ └── left-join (hash, store right)
       ├── columns: a.x:1(int) a.rowid:2(int) b.x:3(int) b.rowid:4(int!null)
-      ├── scan a
-      │    └── columns: a.x:1(int) a.rowid:2(int!null)
       ├── scan b
       │    └── columns: b.x:3(int) b.rowid:4(int!null)
+      ├── scan a
+      │    └── columns: a.x:1(int) a.rowid:2(int!null)
       └── filters
            └── eq [type=bool]
                 ├── variable: a.x [type=int]
@@ -917,12 +917,12 @@ sort
  ├── ordering: +3,+4
  └── project
       ├── columns: a.i:1(int) b.i:3(int) b:4(bool)
-      └── right-join (hash, store right)
+      └── left-join (hash, store right)
            ├── columns: a.i:1(int) a.rowid:2(int) b.i:3(int) b:4(bool) b.rowid:5(int!null)
-           ├── scan a
-           │    └── columns: a.i:1(int) a.rowid:2(int!null)
            ├── scan b
            │    └── columns: b.i:3(int) b:4(bool) b.rowid:5(int!null)
+           ├── scan a
+           │    └── columns: a.i:1(int) a.rowid:2(int!null)
            └── filters
                 └── eq [type=bool]
                      ├── variable: a.i [type=int]
@@ -1524,12 +1524,12 @@ select
  ├── columns: a:1(int) b:2(int) n:4(int!null) sq:5(int)
  ├── project
  │    ├── columns: a:1(int) b:2(int) n:4(int!null) sq:5(int)
- │    └── right-join (hash, store right)
+ │    └── left-join (hash, store right)
  │         ├── columns: a:1(int) b:2(int) rowid:3(int) n:4(int!null) sq:5(int)
- │         ├── scan pairs
- │         │    └── columns: a:1(int) b:2(int) rowid:3(int!null)
  │         ├── scan square
  │         │    └── columns: n:4(int!null) sq:5(int)
+ │         ├── scan pairs
+ │         │    └── columns: a:1(int) b:2(int) rowid:3(int!null)
  │         └── filters
  │              └── and [type=bool]
  │                   ├── and [type=bool]
@@ -2025,12 +2025,12 @@ project
  ├── columns: s:5(collatedstring{en_u_ks_level1}) s:2(collatedstring{en_u_ks_level1}) s:4(collatedstring{en_u_ks_level1})
  └── project
       ├── columns: s:5(collatedstring{en_u_ks_level1}) str1.a:1(int) str1.s:2(collatedstring{en_u_ks_level1}) str2.a:3(int!null) str2.s:4(collatedstring{en_u_ks_level1})
-      ├── right-join (hash, store right)
+      ├── left-join (hash, store right)
       │    ├── columns: str1.a:1(int) str1.s:2(collatedstring{en_u_ks_level1}) str2.a:3(int!null) str2.s:4(collatedstring{en_u_ks_level1})
-      │    ├── scan str1
-      │    │    └── columns: str1.a:1(int!null) str1.s:2(collatedstring{en_u_ks_level1})
       │    ├── scan str2
       │    │    └── columns: str2.a:3(int!null) str2.s:4(collatedstring{en_u_ks_level1})
+      │    ├── scan str1
+      │    │    └── columns: str1.a:1(int!null) str1.s:2(collatedstring{en_u_ks_level1})
       │    └── filters
       │         └── eq [type=bool]
       │              ├── variable: str1.s [type=collatedstring{en_u_ks_level1}]
@@ -2071,12 +2071,12 @@ project
  ├── columns: a:3(int!null) s:5(collatedstring{en_u_ks_level1})
  └── project
       ├── columns: s:5(collatedstring{en_u_ks_level1}) str1.a:1(int) str1.s:2(collatedstring{en_u_ks_level1}) str2.a:3(int!null) str2.s:4(collatedstring{en_u_ks_level1})
-      ├── right-join (hash, store right)
+      ├── left-join (hash, store right)
       │    ├── columns: str1.a:1(int) str1.s:2(collatedstring{en_u_ks_level1}) str2.a:3(int!null) str2.s:4(collatedstring{en_u_ks_level1})
-      │    ├── scan str1
-      │    │    └── columns: str1.a:1(int!null) str1.s:2(collatedstring{en_u_ks_level1})
       │    ├── scan str2
       │    │    └── columns: str2.a:3(int!null) str2.s:4(collatedstring{en_u_ks_level1})
+      │    ├── scan str1
+      │    │    └── columns: str1.a:1(int!null) str1.s:2(collatedstring{en_u_ks_level1})
       │    └── filters
       │         ├── eq [type=bool]
       │         │    ├── variable: str1.a [type=int]
@@ -2155,12 +2155,12 @@ project
  ├── columns: x:4(int!null) y:5(int!null) u:3(int) v:6(int!null)
  └── select
       ├── columns: xyu.x:1(int) xyu.y:2(int) u:3(int) xyv.x:4(int!null) xyv.y:5(int!null) v:6(int!null)
-      ├── right-join (hash, store right)
+      ├── left-join (hash, store right)
       │    ├── columns: xyu.x:1(int) xyu.y:2(int) u:3(int) xyv.x:4(int!null) xyv.y:5(int!null) v:6(int!null)
-      │    ├── scan xyu
-      │    │    └── columns: xyu.x:1(int!null) xyu.y:2(int!null) u:3(int!null)
       │    ├── scan xyv
       │    │    └── columns: xyv.x:4(int!null) xyv.y:5(int!null) v:6(int!null)
+      │    ├── scan xyu
+      │    │    └── columns: xyu.x:1(int!null) xyu.y:2(int!null) u:3(int!null)
       │    └── filters
       │         ├── eq [type=bool]
       │         │    ├── variable: xyu.x [type=int]
@@ -2291,12 +2291,12 @@ left-join (hash, store right)
 build
 SELECT * FROM xyu RIGHT OUTER JOIN xyv ON xyu.x = xyv.x AND xyu.y = xyv.y AND xyu.x = 1 AND xyu.y < 10
 ----
-right-join (hash, store right)
+left-join (hash, store right)
  ├── columns: x:1(int) y:2(int) u:3(int) x:4(int!null) y:5(int!null) v:6(int!null)
- ├── scan xyu
- │    └── columns: xyu.x:1(int!null) xyu.y:2(int!null) u:3(int!null)
  ├── scan xyv
  │    └── columns: xyv.x:4(int!null) xyv.y:5(int!null) v:6(int!null)
+ ├── scan xyu
+ │    └── columns: xyu.x:1(int!null) xyu.y:2(int!null) u:3(int!null)
  └── filters
       └── and [type=bool]
            ├── and [type=bool]
@@ -2349,12 +2349,12 @@ project
  ├── columns: x:4(int!null) y:5(int!null) u:3(int) v:6(int!null)
  └── select
       ├── columns: xyu.x:1(int) xyu.y:2(int) u:3(int) xyv.x:4(int!null) xyv.y:5(int!null) v:6(int!null)
-      ├── right-join (hash, store right)
+      ├── left-join (hash, store right)
       │    ├── columns: xyu.x:1(int) xyu.y:2(int) u:3(int) xyv.x:4(int!null) xyv.y:5(int!null) v:6(int!null)
-      │    ├── scan xyu
-      │    │    └── columns: xyu.x:1(int!null) xyu.y:2(int!null) u:3(int!null)
       │    ├── scan xyv
       │    │    └── columns: xyv.x:4(int!null) xyv.y:5(int!null) v:6(int!null)
+      │    ├── scan xyu
+      │    │    └── columns: xyu.x:1(int!null) xyu.y:2(int!null) u:3(int!null)
       │    └── filters
       │         ├── eq [type=bool]
       │         │    ├── variable: xyu.x [type=int]
@@ -2430,12 +2430,12 @@ left-join (hash, store right)
 build
 SELECT * FROM xyu RIGHT OUTER JOIN (SELECT * FROM xyv ORDER BY x, y) AS xyv ON xyu.x = xyv.x AND xyu.y = xyv.y AND xyu.x = 1 AND xyu.y < 10
 ----
-right-join (hash, store right)
+left-join (hash, store right)
  ├── columns: x:1(int) y:2(int) u:3(int) x:4(int!null) y:5(int!null) v:6(int!null)
- ├── scan xyu
- │    └── columns: xyu.x:1(int!null) xyu.y:2(int!null) u:3(int!null)
  ├── scan xyv
  │    └── columns: xyv.x:4(int!null) xyv.y:5(int!null) v:6(int!null)
+ ├── scan xyu
+ │    └── columns: xyu.x:1(int!null) xyu.y:2(int!null) u:3(int!null)
  └── filters
       └── and [type=bool]
            ├── and [type=bool]
@@ -2521,12 +2521,12 @@ SELECT * FROM l RIGHT OUTER JOIN r ON l.a = r.a WHERE r.a = 3;
 ----
 select
  ├── columns: a:1(int) a:2(int!null)
- ├── right-join (hash, store right)
+ ├── left-join (hash, store right)
  │    ├── columns: l.a:1(int) r.a:2(int!null)
- │    ├── scan l
- │    │    └── columns: l.a:1(int!null)
  │    ├── scan r
  │    │    └── columns: r.a:2(int!null)
+ │    ├── scan l
+ │    │    └── columns: l.a:1(int!null)
  │    └── filters
  │         └── eq [type=bool]
  │              ├── variable: l.a [type=int]
@@ -2565,12 +2565,12 @@ project
  ├── columns: a:2(int!null)
  └── select
       ├── columns: l.a:1(int) r.a:2(int!null)
-      ├── right-join (hash, store right)
+      ├── left-join (hash, store right)
       │    ├── columns: l.a:1(int) r.a:2(int!null)
-      │    ├── scan l
-      │    │    └── columns: l.a:1(int!null)
       │    ├── scan r
       │    │    └── columns: r.a:2(int!null)
+      │    ├── scan l
+      │    │    └── columns: l.a:1(int!null)
       │    └── filters
       │         └── eq [type=bool]
       │              ├── variable: l.a [type=int]

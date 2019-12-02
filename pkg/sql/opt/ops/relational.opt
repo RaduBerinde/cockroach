@@ -195,15 +195,6 @@ define LeftJoin {
 }
 
 [Relational, Join, JoinNonApply, Telemetry]
-define RightJoin {
-    Left  RelExpr
-    Right RelExpr
-    On    FiltersExpr
-
-    _ JoinPrivate
-}
-
-[Relational, Join, JoinNonApply, Telemetry]
 define FullJoin {
     Left  RelExpr
     Right RelExpr
@@ -328,7 +319,7 @@ define MergeJoin {
 [Private]
 define MergeJoinPrivate {
     # JoinType is one of the basic join operators: InnerJoin, LeftJoin,
-    # RightJoin, FullJoin, SemiJoin, AntiJoin.
+    # FullJoin, SemiJoin, AntiJoin.
     JoinType Operator
 
     # LeftEq and RightEq are orderings on equality columns. They have the same

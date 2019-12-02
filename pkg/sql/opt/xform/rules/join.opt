@@ -16,28 +16,6 @@
 =>
 ((OpName) $right $left $on $private)
 
-# CommuteLeftJoin creates a Join with the left and right inputs swapped.
-[CommuteLeftJoin, Explore]
-(LeftJoin
-    $left:*
-    $right:*
-    $on:*
-    $private:* & (NoJoinHints $private)
-)
-=>
-(RightJoin $right $left $on $private)
-
-# CommuteRightJoin creates a Join with the left and right inputs swapped.
-[CommuteRightJoin, Explore]
-(RightJoin
-    $left:*
-    $right:*
-    $on:*
-    $private:* & (NoJoinHints $private)
-)
-=>
-(LeftJoin $right $left $on $private)
-
 # CommuteSemiJoin generates an InnerJoin that is equivalent to the SemiJoin.
 # SemiJoins impose a partial order on the joining tables. We can convert a
 # SemiJoin into an InnerJoin by applying a DistinctOn operator on the selected

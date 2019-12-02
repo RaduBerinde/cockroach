@@ -194,21 +194,25 @@ func (b *Builder) constructJoin(
 			return b.factory.ConstructInnerJoinApply(left, right, on, private)
 		}
 		return b.factory.ConstructInnerJoin(left, right, on, private)
+
 	case sqlbase.LeftOuterJoin:
 		if isLateral {
 			return b.factory.ConstructLeftJoinApply(left, right, on, private)
 		}
 		return b.factory.ConstructLeftJoin(left, right, on, private)
+
 	case sqlbase.RightOuterJoin:
 		if isLateral {
 			panic(invalidLateralJoin)
 		}
-		return b.factory.ConstructRightJoin(left, right, on, private)
+		return b.factory.ConstructLeftJoin(right, left, on, private)
+
 	case sqlbase.FullOuterJoin:
 		if isLateral {
 			panic(invalidLateralJoin)
 		}
 		return b.factory.ConstructFullJoin(left, right, on, private)
+
 	default:
 		panic(pgerror.Newf(pgcode.FeatureNotSupported,
 			"unsupported JOIN type %d", joinType))

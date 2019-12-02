@@ -37,11 +37,11 @@
 
 
 # RejectNullsLeftJoin reduces a LeftJoin operator to an InnerJoin operator (or a
-# FullJoin to a RightJoin) when there is a null-rejecting filter on any column
-# from the right side. The effect of the null-rejecting filter is that output
-# rows with all NULL values on the right side created by the left (or full) join
-# are eliminated, making the join equivalent to an inner (or right) join. For
-# example:
+# FullJoin to a commuted LeftJoin) when there is a null-rejecting filter on any
+# column from the right side. The effect of the null-rejecting filter is that
+# output rows with all NULL values on the right side created by the left (or
+# full) join are eliminated, making the join equivalent to an inner (or right)
+# join. For example:
 #
 #   SELECT * FROM a LEFT OUTER JOIN b ON a.x = b.x WHERE b.y < 5
 #
@@ -79,14 +79,14 @@
 )
 
 # RejectNullsRightJoin is symmetric with RejectNullsLeftJoin. It reduces a
-# RightJoin operator to an InnerJoin operator (or a FullJoin to a LeftJoin) when
-# there is a null-rejecting filter on any column from the left side.
+# FullJoin operator to a LeftJoin when there is a null-rejecting filter on any
+# column from the left side.
 #
 # This rule is marked as high priority for the same reason as
 # RejectNullsLeftJoin.
 [RejectNullsRightJoin, Normalize, HighPriority]
 (Select
-    $input:(RightJoin | FullJoin
+    $input:(FullJoin
         $left:*
         $right:*
         $on:*
@@ -96,8 +96,7 @@
 )
 =>
 (Select
-    (ConstructNonRightJoin
-        (OpName $input)
+    (LeftJoin
         $left
         $right
         $on

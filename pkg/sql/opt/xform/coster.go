@@ -161,7 +161,7 @@ func (c *coster) ComputeCost(candidate memo.RelExpr, required *physical.Required
 	case opt.ValuesOp:
 		cost = c.computeValuesCost(candidate.(*memo.ValuesExpr))
 
-	case opt.InnerJoinOp, opt.LeftJoinOp, opt.RightJoinOp, opt.FullJoinOp,
+	case opt.InnerJoinOp, opt.LeftJoinOp, opt.FullJoinOp,
 		opt.SemiJoinOp, opt.AntiJoinOp, opt.InnerJoinApplyOp, opt.LeftJoinApplyOp,
 		opt.SemiJoinApplyOp, opt.AntiJoinApplyOp:
 		// All join ops use hash join by default.
@@ -336,15 +336,17 @@ func (c *coster) computeHashJoinCost(join memo.RelExpr) memo.Cost {
 
 	// A hash join must process every row from both tables once.
 	//
-	// We add some factors to account for the hashtable build and lookups. The
-	// right side is the one stored in the hashtable, so we use a larger factor
-	// for that side. This ensures that a join with the smaller right side is
-	// preferred to the symmetric join.
+	// We add a term to account for the hashtable build and lookups, depending on
+	// which side we store.
 	//
 	// TODO(rytaft): This is the cost of an in-memory hash join. When a certain
 	// amount of memory is used, distsql switches to a disk-based hash join with
 	// a temp RocksDB store.
-	cost := memo.Cost(1.25*leftRowCount+1.75*rightRowCount) * cpuCostFactor
+	hashtableRowCount := rightRowCount
+	if memo.ShouldCommuteHashJoin(join) {
+		hashtableRowCount = leftRowCount
+	}
+	cost := memo.Cost(1.25*(leftRowCount+rightRowCount)+0.5*hashtableRowCount) * cpuCostFactor
 
 	// Add the CPU cost of emitting the rows.
 	rowsProcessed, ok := c.mem.RowsProcessed(join)

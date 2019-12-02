@@ -100,54 +100,6 @@ func TestJoinCardinality(t *testing.T) {
 			},
 		},
 
-		{ // Right join, true filter.
-			joinType: opt.RightJoinOp,
-			filter:   "true",
-			testCases: []testCase{
-				{left: c(0, 10), right: c(0, 10), expected: c(0, 100)},
-				{left: c(5, 10), right: c(0, 10), expected: c(0, 100)},
-				{left: c(0, 10), right: c(5, 10), expected: c(5, 100)},
-				{left: c(5, 10), right: c(5, 10), expected: c(25, 100)},
-			},
-		},
-
-		{ // Right join, false filter.
-			joinType: opt.RightJoinOp,
-			filter:   "false",
-			testCases: []testCase{
-				{left: c(0, 10), right: c(0, 10), expected: c(0, 10)},
-				{left: c(5, 10), right: c(0, 10), expected: c(0, 10)},
-				{left: c(0, 10), right: c(5, 10), expected: c(5, 10)},
-				{left: c(5, 10), right: c(5, 10), expected: c(5, 10)},
-			},
-		},
-
-		{ // Right join, other filter.
-			joinType: opt.RightJoinOp,
-			filter:   "other",
-			testCases: []testCase{
-				{left: c(0, 10), right: c(0, 10), expected: c(0, 100)},
-				{left: c(5, 10), right: c(0, 10), expected: c(0, 100)},
-				{left: c(0, 10), right: c(5, 10), expected: c(5, 100)},
-				{left: c(5, 10), right: c(5, 10), expected: c(5, 100)},
-			},
-		},
-
-		{ // Full join, true filter.
-			joinType: opt.FullJoinOp,
-			filter:   "true",
-			testCases: []testCase{
-				{left: c(0, 1), right: c(0, 1), expected: c(0, 2)},
-				{left: c(1, 1), right: c(1, 1), expected: c(1, 2)},
-				{left: c(0, 10), right: c(0, 10), expected: c(0, 100)},
-				{left: c(5, 10), right: c(0, 10), expected: c(5, 100)},
-				{left: c(0, 10), right: c(5, 10), expected: c(5, 100)},
-				{left: c(5, 10), right: c(5, 10), expected: c(25, 100)},
-				{left: c(7, 10), right: c(8, 10), expected: c(56, 100)},
-				{left: c(8, 10), right: c(7, 10), expected: c(56, 100)},
-			},
-		},
-
 		{ // Full join, false filter.
 			joinType: opt.FullJoinOp,
 			filter:   "false",
