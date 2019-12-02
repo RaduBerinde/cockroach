@@ -17,7 +17,7 @@ CREATE TABLE uv (u INT PRIMARY KEY, v INT)
 opt expect=RejectNullsRightJoin
 SELECT * FROM a FULL JOIN xy ON true WHERE a.k IS NOT NULL
 ----
-left-join (hash)
+left-join (hash, store right)
  ├── columns: k:1(int!null) i:2(int) f:3(float) s:4(string) x:5(int) y:6(int)
  ├── key: (1,5)
  ├── fd: (1)-->(2-4), (5)-->(6)
@@ -34,7 +34,7 @@ left-join (hash)
 opt expect=RejectNullsLeftJoin
 SELECT * FROM a FULL JOIN xy ON true WHERE xy.x > 5
 ----
-right-join (hash)
+right-join (hash, store right)
  ├── columns: k:1(int) i:2(int) f:3(float) s:4(string) x:5(int!null) y:6(int)
  ├── key: (1,5)
  ├── fd: (1)-->(2-4), (5)-->(6)
@@ -56,11 +56,11 @@ FROM (SELECT * FROM a LEFT JOIN uv ON True) AS l
 INNER JOIN (SELECT * FROM a LEFT JOIN uv ON True) AS r
 ON l.u=1 AND r.v>2
 ----
-inner-join (hash)
+inner-join (hash, store right)
  ├── columns: k:1(int!null) i:2(int) f:3(float) s:4(string) u:5(int!null) v:6(int) k:7(int!null) i:8(int) f:9(float) s:10(string) u:11(int!null) v:12(int!null)
  ├── key: (1,7,11)
  ├── fd: ()-->(5,6), (1)-->(2-4), (7)-->(8-10), (11)-->(12)
- ├── inner-join (hash)
+ ├── inner-join (hash, store right)
  │    ├── columns: u:5(int!null) v:6(int) k:7(int!null) i:8(int) f:9(float) s:10(string) u:11(int!null) v:12(int!null)
  │    ├── key: (7,11)
  │    ├── fd: ()-->(5,6), (7)-->(8-10), (11)-->(12)
@@ -68,7 +68,7 @@ inner-join (hash)
  │    │    ├── columns: k:7(int!null) i:8(int) f:9(float) s:10(string)
  │    │    ├── key: (7)
  │    │    └── fd: (7)-->(8-10)
- │    ├── inner-join (hash)
+ │    ├── inner-join (hash, store right)
  │    │    ├── columns: u:5(int!null) v:6(int) u:11(int!null) v:12(int!null)
  │    │    ├── key: (11)
  │    │    ├── fd: ()-->(5,6), (11)-->(12)
@@ -122,7 +122,7 @@ inner-join (merge)
 opt expect=RejectNullsRightJoin
 SELECT * FROM a RIGHT JOIN xy ON true WHERE a.k > xy.y
 ----
-inner-join (hash)
+inner-join (hash, store right)
  ├── columns: k:1(int!null) i:2(int) f:3(float) s:4(string) x:5(int!null) y:6(int!null)
  ├── key: (1,5)
  ├── fd: (1)-->(2-4), (5)-->(6)
@@ -141,7 +141,7 @@ inner-join (hash)
 opt expect=(RejectNullsLeftJoin,RejectNullsRightJoin)
 SELECT * FROM a FULL JOIN xy ON true WHERE a.k IS NOT NULL AND xy.x > 5
 ----
-inner-join (hash)
+inner-join (hash, store right)
  ├── columns: k:1(int!null) i:2(int) f:3(float) s:4(string) x:5(int!null) y:6(int)
  ├── key: (1,5)
  ├── fd: (1)-->(2-4), (5)-->(6)
@@ -166,7 +166,7 @@ project
  ├── columns: k:1(int!null) i:2(int) f:3(float) s:4(string) x:5(int) y:6(int)
  ├── key: (1,5)
  ├── fd: (1)-->(2-4), (5)-->(6)
- └── right-join (hash)
+ └── right-join (hash, store right)
       ├── columns: k:1(int!null) i:2(int) f:3(float) s:4(string) x:5(int) y:6(int) u:7(int!null)
       ├── key: (1,5)
       ├── fd: (1)-->(2-4,7), (2)==(7), (7)==(2), (5)-->(6)
@@ -232,7 +232,7 @@ project
       │    ├── grouping columns: k:1(int!null)
       │    ├── key: (1)
       │    ├── fd: (1)-->(7)
-      │    ├── inner-join (hash)
+      │    ├── inner-join (hash, store right)
       │    │    ├── columns: k:1(int!null) x:5(int!null)
       │    │    ├── key: (1,5)
       │    │    ├── scan a
@@ -269,7 +269,7 @@ project
       │    ├── grouping columns: k:1(int!null)
       │    ├── key: (1)
       │    ├── fd: (1)-->(7)
-      │    ├── inner-join (hash)
+      │    ├── inner-join (hash, store right)
       │    │    ├── columns: k:1(int!null) y:6(int!null)
       │    │    ├── scan a
       │    │    │    ├── columns: k:1(int!null)
@@ -306,7 +306,7 @@ select
  │    ├── cardinality: [1 - 1]
  │    ├── key: ()
  │    ├── fd: ()-->(7)
- │    ├── inner-join (hash)
+ │    ├── inner-join (hash, store right)
  │    │    ├── columns: x:5(int!null)
  │    │    ├── scan a
  │    │    ├── scan xy
@@ -340,7 +340,7 @@ project
       │    ├── grouping columns: k:1(int!null)
       │    ├── key: (1)
       │    ├── fd: (1)-->(7,8)
-      │    ├── inner-join (hash)
+      │    ├── inner-join (hash, store right)
       │    │    ├── columns: k:1(int!null) x:5(int!null)
       │    │    ├── key: (1,5)
       │    │    ├── scan a
@@ -379,7 +379,7 @@ project
       │    ├── grouping columns: k:1(int!null)
       │    ├── key: (1)
       │    ├── fd: (1)-->(7,8)
-      │    ├── inner-join (hash)
+      │    ├── inner-join (hash, store right)
       │    │    ├── columns: k:1(int!null) y:6(int!null)
       │    │    ├── scan a
       │    │    │    ├── columns: k:1(int!null)
@@ -434,7 +434,7 @@ select
  │    ├── cardinality: [1 - 1]
  │    ├── key: ()
  │    ├── fd: ()-->(5,6)
- │    ├── inner-join (hash)
+ │    ├── inner-join (hash, store right)
  │    │    ├── columns: x:1(int!null) y:2(int) u:3(int!null) v:4(int!null)
  │    │    ├── key: (1,3)
  │    │    ├── fd: (1)-->(2), (3)-->(4)
@@ -482,7 +482,7 @@ project
       │    ├── grouping columns: k:1(int!null)
       │    ├── key: (1)
       │    ├── fd: (1)-->(7,8)
-      │    ├── left-join (hash)
+      │    ├── left-join (hash, store right)
       │    │    ├── columns: k:1(int!null) x:5(int) y:6(int)
       │    │    ├── key: (1,5)
       │    │    ├── fd: (5)-->(6)
@@ -524,7 +524,7 @@ project
       │    ├── grouping columns: k:1(int!null)
       │    ├── key: (1)
       │    ├── fd: (1)-->(7)
-      │    ├── left-join (hash)
+      │    ├── left-join (hash, store right)
       │    │    ├── columns: k:1(int!null) x:5(int)
       │    │    ├── key: (1,5)
       │    │    ├── scan a
@@ -564,7 +564,7 @@ project
  │    │    │    ├── outer: (4)
  │    │    │    ├── key: (5)
  │    │    │    ├── fd: (5)-->(15)
- │    │    │    ├── left-join (hash)
+ │    │    │    ├── left-join (hash, store right)
  │    │    │    │    ├── columns: ref_1.k:5(int!null) true:14(bool)
  │    │    │    │    ├── outer: (4)
  │    │    │    │    ├── fd: ()~~>(14)

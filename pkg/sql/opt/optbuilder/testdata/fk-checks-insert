@@ -25,7 +25,7 @@ insert child
  │         └── const: 1 [type=int]
  └── f-k-checks
       └── f-k-checks-item: child(p) -> parent(p)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:7(int!null)
                 ├── with-scan &1
                 │    ├── columns: column2:7(int!null)
@@ -58,7 +58,7 @@ insert child
  │         └── columns: x:3(int) xy.y:4(int) rowid:5(int!null)
  └── f-k-checks
       └── f-k-checks-item: child(p) -> parent(p)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: y:8(int)
                 ├── with-scan &1
                 │    ├── columns: y:8(int)
@@ -97,7 +97,7 @@ insert child_nullable
  │              └── null [type=unknown]
  └── f-k-checks
       └── f-k-checks-item: child_nullable(p) -> parent(p)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:7(int!null)
                 ├── select
                 │    ├── columns: column2:7(int!null)
@@ -137,7 +137,7 @@ insert child_nullable
  │         └── const: 1 [type=int]
  └── f-k-checks
       └── f-k-checks-item: child_nullable(p) -> parent(p)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:7(int!null)
                 ├── with-scan &1
                 │    ├── columns: column2:7(int!null)
@@ -176,7 +176,7 @@ insert child_nullable_full
  │              └── null [type=unknown]
  └── f-k-checks
       └── f-k-checks-item: child_nullable_full(p) -> parent(p)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:7(int!null)
                 ├── select
                 │    ├── columns: column2:7(int!null)
@@ -232,7 +232,7 @@ insert multi_col_child
  │              └── null [type=unknown]
  └── f-k-checks
       └── f-k-checks-item: multi_col_child(p,q,r) -> multi_col_parent(p,q,r)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:13(int!null) column3:14(int!null) column4:15(int!null)
                 ├── select
                 │    ├── columns: column2:13(int!null) column3:14(int!null) column4:15(int!null)
@@ -293,7 +293,7 @@ insert multi_col_child
  │         └── const: 20 [type=int]
  └── f-k-checks
       └── f-k-checks-item: multi_col_child(p,q,r) -> multi_col_parent(p,q,r)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:13(int!null) column3:14(int!null) column4:15(int!null)
                 ├── select
                 │    ├── columns: column2:13(int!null) column3:14(int!null) column4:15(int!null)
@@ -344,7 +344,7 @@ insert multi_col_child
  │         └── const: 10 [type=int]
  └── f-k-checks
       └── f-k-checks-item: multi_col_child(p,q,r) -> multi_col_parent(p,q,r)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:13(int!null) column3:14(int!null) column4:15(int!null)
                 ├── with-scan &1
                 │    ├── columns: column2:13(int!null) column3:14(int!null) column4:15(int!null)
@@ -397,7 +397,7 @@ insert multi_col_child_full
  │              └── null [type=unknown]
  └── f-k-checks
       └── f-k-checks-item: multi_col_child_full(p,q,r) -> multi_col_parent(p,q,r)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:13(int) column3:14(int) column4:15(int)
                 ├── select
                 │    ├── columns: column2:13(int) column3:14(int) column4:15(int)
@@ -460,7 +460,7 @@ insert multi_col_child_full
  │         └── const: 20 [type=int]
  └── f-k-checks
       └── f-k-checks-item: multi_col_child_full(p,q,r) -> multi_col_parent(p,q,r)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:13(int) column3:14(int) column4:15(int!null)
                 ├── with-scan &1
                 │    ├── columns: column2:13(int) column3:14(int) column4:15(int!null)
@@ -502,7 +502,7 @@ insert multi_col_child_full
  │         └── const: 10 [type=int]
  └── f-k-checks
       └── f-k-checks-item: multi_col_child_full(p,q,r) -> multi_col_parent(p,q,r)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column2:13(int!null) column3:14(int!null) column4:15(int!null)
                 ├── with-scan &1
                 │    ├── columns: column2:13(int!null) column3:14(int!null) column4:15(int!null)
@@ -565,7 +565,7 @@ insert multi_ref_child
  │              └── null [type=unknown]
  └── f-k-checks
       ├── f-k-checks-item: multi_ref_child(a) -> multi_ref_parent_a(a)
-      │    └── anti-join (hash)
+      │    └── anti-join (hash, store right)
       │         ├── columns: column2:11(int!null)
       │         ├── select
       │         │    ├── columns: column2:11(int!null)
@@ -584,7 +584,7 @@ insert multi_ref_child
       │                   ├── variable: column2 [type=int]
       │                   └── variable: multi_ref_parent_a.a [type=int]
       └── f-k-checks-item: multi_ref_child(b,c) -> multi_ref_parent_bc(b,c)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column3:15(int!null) column4:16(int!null)
                 ├── select
                 │    ├── columns: column3:15(int!null) column4:16(int!null)

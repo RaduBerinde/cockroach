@@ -23,7 +23,7 @@ update child
  │         └── const: 4 [type=int]
  └── f-k-checks
       └── f-k-checks-item: child(p) -> parent(p)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column5:9(int!null)
                 ├── with-scan &1
                 │    ├── columns: column5:9(int!null)
@@ -55,7 +55,7 @@ update parent
  │              └── const: 1 [type=int]
  └── f-k-checks
       └── f-k-checks-item: child(p) -> parent(p)
-           └── semi-join (hash)
+           └── semi-join (hash, store right)
                 ├── columns: p:10(int)
                 ├── project
                 │    ├── columns: p:10(int)
@@ -101,7 +101,7 @@ update child
  │         └── const: 4 [type=int]
  └── f-k-checks
       └── f-k-checks-item: grandchild(c) -> child(c)
-           └── semi-join (hash)
+           └── semi-join (hash, store right)
                 ├── columns: c:8(int)
                 ├── project
                 │    ├── columns: c:8(int)
@@ -144,7 +144,7 @@ update child
  │         └── const: 4 [type=int]
  └── f-k-checks
       └── f-k-checks-item: child(p) -> parent(p)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column5:9(int!null)
                 ├── with-scan &1
                 │    ├── columns: column5:9(int!null)
@@ -170,7 +170,7 @@ update child
  │    └── columns: c:3(int!null) child.p:4(int!null)
  └── f-k-checks
       └── f-k-checks-item: child(p) -> parent(p)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: p:8(int!null)
                 ├── with-scan &1
                 │    ├── columns: p:8(int!null)
@@ -206,7 +206,7 @@ update child
  │              └── const: 1 [type=int]
  └── f-k-checks
       ├── f-k-checks-item: child(p) -> parent(p)
-      │    └── anti-join (hash)
+      │    └── anti-join (hash, store right)
       │         ├── columns: column5:10(int)
       │         ├── with-scan &1
       │         │    ├── columns: column5:10(int)
@@ -219,7 +219,7 @@ update child
       │                   ├── variable: column5 [type=int]
       │                   └── variable: parent.p [type=int]
       └── f-k-checks-item: grandchild(c) -> child(c)
-           └── semi-join (hash)
+           └── semi-join (hash, store right)
                 ├── columns: c:13(int)
                 ├── project
                 │    ├── columns: c:13(int)
@@ -266,7 +266,7 @@ update child
  │         └── const: 4 [type=int]
  └── f-k-checks
       └── f-k-checks-item: child(p) -> parent(p)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column5:9(int!null)
                 ├── with-scan &1
                 │    ├── columns: column5:9(int!null)
@@ -300,7 +300,7 @@ update self
  │         └── const: 3 [type=int]
  └── f-k-checks
       └── f-k-checks-item: self(y) -> self(x)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column5:8(int!null)
                 ├── with-scan &1
                 │    ├── columns: column5:8(int!null)
@@ -330,7 +330,7 @@ update self
  │         └── const: 3 [type=int]
  └── f-k-checks
       └── f-k-checks-item: self(y) -> self(x)
-           └── semi-join (hash)
+           └── semi-join (hash, store right)
                 ├── columns: x:8(int)
                 ├── project
                 │    ├── columns: x:8(int)
@@ -393,7 +393,7 @@ update fam
  │         └── const: 3 [type=int]
  └── f-k-checks
       └── f-k-checks-item: fam(c,d) -> two(a,b)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: column13:16(int!null) d:17(int!null)
                 ├── select
                 │    ├── columns: column13:16(int!null) d:17(int!null)
@@ -433,7 +433,7 @@ update fam
  │         └── const: 3 [type=int]
  └── f-k-checks
       └── f-k-checks-item: fam(c,d) -> two(a,b)
-           └── anti-join (hash)
+           └── anti-join (hash, store right)
                 ├── columns: c:16(int!null) column13:17(int!null)
                 ├── select
                 │    ├── columns: c:16(int!null) column13:17(int!null)

@@ -120,7 +120,7 @@ AssociateJoin
 Source expression:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── inner-join (merge)
              │    ├── scan grandchild
              │    ├── scan child
@@ -132,9 +132,9 @@ Source expression:
 New expression 1 of 1:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── scan grandchild
-             ├── inner-join (hash)
+             ├── inner-join (hash, store right)
              │    ├── scan child
              │    ├── scan parent
              │    └── filters
@@ -149,7 +149,7 @@ AssociateJoin
 Source expression:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── inner-join (merge)
              │    ├── scan grandchild
              │    ├── scan child
@@ -161,9 +161,9 @@ Source expression:
 New expression 1 of 1:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── scan child
-             ├── inner-join (hash)
+             ├── inner-join (hash, store right)
              │    ├── scan grandchild
              │    ├── scan parent
              │    └── filters
@@ -178,7 +178,7 @@ AssociateJoin
 Source expression:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── inner-join (merge)
              │    ├── scan child
              │    ├── scan parent
@@ -191,7 +191,7 @@ Source expression:
 New expression 1 of 1:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── scan child
              ├── inner-join (merge)
              │    ├── scan grandchild
@@ -207,7 +207,7 @@ AssociateJoin
 Source expression:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── inner-join (merge)
              │    ├── scan child
              │    ├── scan parent
@@ -220,7 +220,7 @@ Source expression:
 New expression 1 of 1:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── scan parent
              ├── inner-join (merge)
              │    ├── scan grandchild
@@ -235,7 +235,7 @@ AssociateJoin
 Source expression:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── inner-join (merge)
              │    ├── scan grandchild
              │    ├── scan parent
@@ -248,9 +248,9 @@ Source expression:
 New expression 1 of 1:
   sort
    └── project
-        └── inner-join (hash)
+        └── inner-join (hash, store right)
              ├── scan parent
-             ├── inner-join (hash)
+             ├── inner-join (hash, store right)
              │    ├── scan grandchild
              │    ├── scan child
              │    └── filters

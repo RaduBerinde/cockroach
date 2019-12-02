@@ -876,7 +876,7 @@ TABLE t
  ├── v int
  └── INDEX primary
       └── k int not null
-inner-join (hash)
+inner-join (hash, store right)
  ├── columns: a:1 b:2 k:4 v:5
  ├── stats: [rows=990, distinct(1)=99, null(1)=0, distinct(4)=99, null(4)=0]
  ├── cost: 2219.95

@@ -2117,7 +2117,7 @@ scalar-group-by
  │    ├── stats: [rows=6.62853719]
  │    ├── cost: 2260.99771
  │    ├── interesting orderings: (+3,+2,-1) (+11,+10,-9)
- │    ├── full-join (hash)
+ │    ├── full-join (hash, store right)
  │    │    ├── columns: o_id:1(int) o_d_id:2(int) o_w_id:3(int) ol_o_id:9(int) ol_d_id:10(int) ol_w_id:11(int)
  │    │    ├── stats: [rows=19.8856116]
  │    │    ├── cost: 2260.78886

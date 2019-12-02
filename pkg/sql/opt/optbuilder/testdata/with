@@ -24,7 +24,7 @@ with &1 (t)
  │                   └── const: 3 [type=int]
  └── project
       ├── columns: x.a:3(int!null) b:4(int)
-      └── inner-join (hash)
+      └── inner-join (hash, store right)
            ├── columns: x.a:3(int!null) b:4(int) x.rowid:5(int!null) a:6(int!null)
            ├── scan x
            │    └── columns: x.a:3(int) b:4(int) x.rowid:5(int!null)
@@ -58,7 +58,7 @@ explain
       │                   └── const: 3 [type=int]
       └── project
            ├── columns: x.a:3(int!null) b:4(int)
-           └── inner-join (hash)
+           └── inner-join (hash, store right)
                 ├── columns: x.a:3(int!null) b:4(int) x.rowid:5(int!null) a:6(int!null)
                 ├── scan x
                 │    └── columns: x.a:3(int) b:4(int) x.rowid:5(int!null)
@@ -127,7 +127,7 @@ create-table
       │    │                   └── const: 3 [type=int]
       │    └── project
       │         ├── columns: "?column?":7(int!null)
-      │         ├── inner-join (hash)
+      │         ├── inner-join (hash, store right)
       │         │    ├── columns: x.a:3(int!null) b:4(int) x.rowid:5(int!null) a:6(int!null)
       │         │    ├── scan x
       │         │    │    └── columns: x.a:3(int) b:4(int) x.rowid:5(int!null)
@@ -307,7 +307,7 @@ with &1 (t1)
                 │              └── const: 3 [type=int]
                 └── project
                      ├── columns: a:7(int!null)
-                     └── inner-join (hash)
+                     └── inner-join (hash, store right)
                           ├── columns: a:7(int!null) a:8(int!null)
                           ├── with-scan &3 (t3)
                           │    ├── columns: a:7(int!null)
@@ -378,7 +378,7 @@ with &1 (t1)
       │         └──  bool:1(bool) => bool:2(bool)
       └── project
            ├── columns: bool:3(bool!null)
-           └── inner-join (hash)
+           └── inner-join (hash, store right)
                 ├── columns: bool:3(bool!null) bool:4(bool!null)
                 ├── with-scan &1 (t1)
                 │    ├── columns: bool:3(bool!null)
@@ -409,7 +409,7 @@ with &1 (t1)
       ├── columns: a:9(int!null) b:10(int!null)
       ├── project
       │    ├── columns: x.a:4(int!null) x.b:5(int!null)
-      │    └── inner-join (hash)
+      │    └── inner-join (hash, store right)
       │         ├── columns: x.a:4(int!null) x.b:5(int!null) rowid:6(int!null) a:7(int!null) b:8(int!null)
       │         ├── scan x
       │         │    └── columns: x.a:4(int) x.b:5(int) rowid:6(int!null)
@@ -427,7 +427,7 @@ with &1 (t1)
       │                   └── variable: b [type=int]
       └── project
            ├── columns: a:9(int!null) b:10(int!null)
-           └── inner-join (hash)
+           └── inner-join (hash, store right)
                 ├── columns: a:9(int!null) b:10(int!null) x.a:11(int!null) x.b:12(int!null) rowid:13(int!null)
                 ├── with-scan &2 (t2)
                 │    ├── columns: a:9(int!null) b:10(int!null)
@@ -674,7 +674,7 @@ with &1 (one)
       │         ├── columns: u:6(int)
       │         └── mapping:
       │              └──  x.a:1(int) => u:6(int)
-      └── inner-join (hash)
+      └── inner-join (hash, store right)
            ├── columns: u:8(int!null) v:9(int!null)
            ├── with-scan &1 (one)
            │    ├── columns: u:8(int)
@@ -837,7 +837,7 @@ with &1 (t)
  │         │    ├── limit hint: 5.00
  │         │    └── project
  │         │         ├── columns: xy.x:1(int!null) v:6(int)
- │         │         └── inner-join (hash)
+ │         │         └── inner-join (hash, store right)
  │         │              ├── columns: xy.x:1(int!null) y:2(int) z:3(timestamp) xy.rowid:4(int!null) u:5(int!null) v:6(int) uv.rowid:7(int!null)
  │         │              ├── scan xy
  │         │              │    └── columns: xy.x:1(int) y:2(int) z:3(timestamp) xy.rowid:4(int!null)
@@ -973,7 +973,7 @@ with &2 (included_parts)
  │         ├── columns: p.part:11(string!null) p.sub_part:12(string) p.quantity:13(int)
  │         └── select
  │              ├── columns: sub_part:8(string!null) part:9(string) quantity:10(int) p.part:11(string!null) p.sub_part:12(string) p.quantity:13(int) p.rowid:14(int!null)
- │              ├── inner-join (hash)
+ │              ├── inner-join (hash, store right)
  │              │    ├── columns: sub_part:8(string) part:9(string) quantity:10(int) p.part:11(string) p.sub_part:12(string) p.quantity:13(int) p.rowid:14(int!null)
  │              │    ├── with-scan &1 (included_parts)
  │              │    │    ├── columns: sub_part:8(string) part:9(string) quantity:10(int)
@@ -1043,7 +1043,7 @@ with &2 (search_graph)
  │         ├── columns: "?column?":22(int) "?column?":23(int[]) "?column?":24(bool) g.id:13(int!null) g.link:14(int) g.data:15(string)
  │         ├── select
  │         │    ├── columns: g.id:13(int!null) g.link:14(int) g.data:15(string) id:16(int) link:17(int!null) data:18(string) depth:19(int) path:20(int[]) cycle:21(bool!null)
- │         │    ├── inner-join (hash)
+ │         │    ├── inner-join (hash, store right)
  │         │    │    ├── columns: g.id:13(int!null) g.link:14(int) g.data:15(string) id:16(int) link:17(int) data:18(string) depth:19(int) path:20(int[]) cycle:21(bool)
  │         │    │    ├── scan g
  │         │    │    │    └── columns: g.id:13(int!null) g.link:14(int) g.data:15(string)
@@ -1298,7 +1298,7 @@ with &2 (foo)
       │    │         └── const: 2 [type=int]
       │    └── project
       │         ├── columns: "?column?":11(int) "?column?":12(int)
-      │         ├── inner-join (hash)
+      │         ├── inner-join (hash, store right)
       │         │    ├── columns: a:7(int) b:8(int) a:9(int) b:10(int)
       │         │    ├── with-scan &2 (foo)
       │         │    │    ├── columns: a:7(int) b:8(int)
