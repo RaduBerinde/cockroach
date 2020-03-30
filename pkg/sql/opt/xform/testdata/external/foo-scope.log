@@ -1,0 +1,436 @@
+Running make with -j12
+GOPATH set to /go
+make[1]: Nothing to be done for 'build_lib_static'.
+GOFLAGS= go test   -tags ' gss make x86_64_linux_gnu' -ldflags '-X github.com/cockroachdb/cockroach/pkg/build.typ=development -extldflags "" -X "github.com/cockroachdb/cockroach/pkg/build.tag=v20.1.0-beta.2-1063-g5c5f194585-dirty" -X "github.com/cockroachdb/cockroach/pkg/build.rev=5c5f1945859d16791fc3dd7a53db42e3fceb2e9a" -X "github.com/cockroachdb/cockroach/pkg/build.cgoTargetTriple=x86_64-linux-gnu"  ' -run "External/foo"  -timeout 10s ./pkg/sql/opt/xform -v
+I200330 02:39:26.393292 1 rand.go:85  Random seed: 3356674790387213229
+=== RUN   TestExternal
+=== RUN   TestExternal/foo
+
+testdata/external/foo:1:
+exec-ddl [0 args]
+CREATE TABLE ab (a INT PRIMARY KEY, b INT, INDEX (b))
+----
+
+testdata/external/foo:5:
+exec-ddl [0 args]
+CREATE TABLE cd (c INT PRIMARY KEY, d INT)
+----
+
+BUILDING SELECT * FROM ab JOIN cd ON b = c WHERE b > 1
+
+FOO allocScope
+goroutine 130 [running]:
+runtime/debug.Stack(0x10, 0x0, 0x0)
+	/usr/local/go/src/runtime/debug/stack.go:24 +0x9d
+runtime/debug.PrintStack()
+	/usr/local/go/src/runtime/debug/stack.go:16 +0x22
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).allocScope(0xc0005720c0, 0xc000010018)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:343 +0x68
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).Build(0xc0005720c0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:193 +0x178
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).buildExpr(0xc000618000, 0xc0001dbd48, 0xc0006181d0, 0x1bc2d60)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1287 +0x2d2
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).optimizeExpr(0xc000618000, 0xc0001dbd40, 0x1bc2d60, 0xc00023c2d0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1297 +0x3f
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).OptBuild(0xc000618000, 0x5, 0x1800def, 0x5, 0xffffffffffffffff)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:703 +0x93
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).RunCommand(0xc000618000, 0x1bd0ac0, 0xc0001b9000, 0xc000194388, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:373 +0x9e6
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1.1(0xc0001b9000, 0xc000194388, 0xc00050db28, 0x51708d)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:228 +0x90
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective.func1(0xc000194388, 0xc0002109c0, 0xc0001b9000, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:291 +0x97
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective(0xc0001b9000, 0xc000194360, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:296 +0x76
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirectiveOrSubTest(0xc0001b9000, 0xc000194360, 0x0, 0x0, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:165 +0xdd
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runTestInternal(0xc0001b9000, 0xc00030ea20, 0x15, 0x1b75780, 0xc000010068, 0xc0002109c0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:129 +0xb8
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.RunTest(0xc0001b9000, 0xc00030ea20, 0x15, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:108 +0x1ec
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1(0xc0001b9000, 0xc00030ea20, 0x15)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:225 +0x117
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk(0xc0001b9000, 0xc00030ea20, 0x15, 0xc000224020)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:366 +0x3ea
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk.func1(0xc0001b9000)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:379 +0xd2
+testing.tRunner(0xc0001b9000, 0xc0005675c0)
+	/usr/local/go/src/testing/testing.go:909 +0xc9
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:960 +0x350
+
+FOO allocScope
+goroutine 130 [running]:
+runtime/debug.Stack(0x10, 0x0, 0x0)
+	/usr/local/go/src/runtime/debug/stack.go:24 +0x9d
+runtime/debug.PrintStack()
+	/usr/local/go/src/runtime/debug/stack.go:16 +0x22
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).allocScope(0xc0005720c0, 0x10000c00050cb20)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:343 +0x68
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*scope).push(...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/scope.go:198
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildCTEs(0xc0005720c0, 0x0, 0xc000618400, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:661 +0x52
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).processWiths(0xc0005720c0, 0x0, 0xc000618400, 0xc00050ce58, 0x7fed6356ea00)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/with.go:26 +0x3f
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelect(0xc0005720c0, 0xc0000debe0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc000618400, 0x3c0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:839 +0x567
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmt(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x4)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:258 +0x23c
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmtAtRoot(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:222 +0xe3
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).Build(0xc0005720c0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:193 +0x1b6
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).buildExpr(0xc000618000, 0xc0001dbd48, 0xc0006181d0, 0x1bc2d60)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1287 +0x2d2
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).optimizeExpr(0xc000618000, 0xc0001dbd40, 0x1bc2d60, 0xc00023c2d0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1297 +0x3f
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).OptBuild(0xc000618000, 0x5, 0x1800def, 0x5, 0xffffffffffffffff)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:703 +0x93
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).RunCommand(0xc000618000, 0x1bd0ac0, 0xc0001b9000, 0xc000194388, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:373 +0x9e6
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1.1(0xc0001b9000, 0xc000194388, 0xc00050db28, 0x51708d)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:228 +0x90
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective.func1(0xc000194388, 0xc0002109c0, 0xc0001b9000, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:291 +0x97
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective(0xc0001b9000, 0xc000194360, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:296 +0x76
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirectiveOrSubTest(0xc0001b9000, 0xc000194360, 0x0, 0x0, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:165 +0xdd
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runTestInternal(0xc0001b9000, 0xc00030ea20, 0x15, 0x1b75780, 0xc000010068, 0xc0002109c0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:129 +0xb8
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.RunTest(0xc0001b9000, 0xc00030ea20, 0x15, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:108 +0x1ec
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1(0xc0001b9000, 0xc00030ea20, 0x15)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:225 +0x117
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk(0xc0001b9000, 0xc00030ea20, 0x15, 0xc000224020)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:366 +0x3ea
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk.func1(0xc0001b9000)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:379 +0xd2
+testing.tRunner(0xc0001b9000, 0xc0005675c0)
+	/usr/local/go/src/testing/testing.go:909 +0xc9
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:960 +0x350
+
+FOO allocScope
+goroutine 130 [running]:
+runtime/debug.Stack(0x10, 0x0, 0x0)
+	/usr/local/go/src/runtime/debug/stack.go:24 +0x9d
+runtime/debug.PrintStack()
+	/usr/local/go/src/runtime/debug/stack.go:16 +0x22
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).allocScope(0xc0005720c0, 0x2)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:343 +0x68
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*scope).push(...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/scope.go:198
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildScan(0xc0005720c0, 0xc0000e7b80, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1802200, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:463 +0xc8
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildDataSource(0xc0005720c0, 0x1b8f3a0, 0xc000360c80, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:118 +0x8d1
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildDataSource(0xc0005720c0, 0x1b8f160, 0xc00023c460, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:62 +0x1bf9
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildJoin(0xc0005720c0, 0xc00023c640, 0x0, 0x0, 0x0, 0xc0006184f0, 0xc00033ca68)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/join.go:35 +0x9a
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildDataSource(0xc0005720c0, 0x1b8f1e0, 0xc00023c640, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:74 +0x9dd
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildFromTablesRightDeep(0xc0005720c0, 0xc0002bd130, 0x1, 0x1, 0x0, 0x0, 0x0, 0xc0006184f0, 0x2000)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:1093 +0x99
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildFromTables(0xc0005720c0, 0xc0002bd130, 0x1, 0x1, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:1070 +0x159
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildFrom(0xc0005720c0, 0xc0002bd130, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:997 +0xab
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelectClause(0xc0005720c0, 0xc00012d3f0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:919 +0xc9
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelectStmtWithoutParens(0xc0005720c0, 0x1bb42e0, 0xc00012d3f0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:867 +0x70f
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelect.func1(0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:840 +0xaa
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).processWiths(0xc0005720c0, 0x0, 0xc0006184f0, 0xc00050ce58, 0x7fed6356ea00)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/with.go:29 +0x69
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelect(0xc0005720c0, 0xc0000debe0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc000618400, 0x3c0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:839 +0x567
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmt(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x4)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:258 +0x23c
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmtAtRoot(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:222 +0xe3
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).Build(0xc0005720c0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:193 +0x1b6
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).buildExpr(0xc000618000, 0xc0001dbd48, 0xc0006181d0, 0x1bc2d60)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1287 +0x2d2
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).optimizeExpr(0xc000618000, 0xc0001dbd40, 0x1bc2d60, 0xc00023c2d0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1297 +0x3f
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).OptBuild(0xc000618000, 0x5, 0x1800def, 0x5, 0xffffffffffffffff)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:703 +0x93
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).RunCommand(0xc000618000, 0x1bd0ac0, 0xc0001b9000, 0xc000194388, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:373 +0x9e6
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1.1(0xc0001b9000, 0xc000194388, 0xc00050db28, 0x51708d)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:228 +0x90
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective.func1(0xc000194388, 0xc0002109c0, 0xc0001b9000, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:291 +0x97
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective(0xc0001b9000, 0xc000194360, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:296 +0x76
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirectiveOrSubTest(0xc0001b9000, 0xc000194360, 0x0, 0x0, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:165 +0xdd
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runTestInternal(0xc0001b9000, 0xc00030ea20, 0x15, 0x1b75780, 0xc000010068, 0xc0002109c0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:129 +0xb8
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.RunTest(0xc0001b9000, 0xc00030ea20, 0x15, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:108 +0x1ec
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1(0xc0001b9000, 0xc00030ea20, 0x15)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:225 +0x117
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk(0xc0001b9000, 0xc00030ea20, 0x15, 0xc000224020)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:366 +0x3ea
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk.func1(0xc0001b9000)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:379 +0xd2
+testing.tRunner(0xc0001b9000, 0xc0005675c0)
+	/usr/local/go/src/testing/testing.go:909 +0xc9
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:960 +0x350
+
+FOO allocScope
+goroutine 130 [running]:
+runtime/debug.Stack(0x10, 0x0, 0x0)
+	/usr/local/go/src/runtime/debug/stack.go:24 +0x9d
+runtime/debug.PrintStack()
+	/usr/local/go/src/runtime/debug/stack.go:16 +0x22
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).allocScope(0xc0005720c0, 0x2)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:343 +0x68
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*scope).push(...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/scope.go:198
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildScan(0xc0005720c0, 0xc0000e7c18, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1802200, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:463 +0xc8
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildDataSource(0xc0005720c0, 0x1b8f3a0, 0xc000360d40, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:118 +0x8d1
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildDataSource(0xc0005720c0, 0x1b8f160, 0xc00023c4b0, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:62 +0x1bf9
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildJoin(0xc0005720c0, 0xc00023c640, 0x0, 0x0, 0x0, 0xc0006184f0, 0xc00033ca68)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/join.go:49 +0x152
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildDataSource(0xc0005720c0, 0x1b8f1e0, 0xc00023c640, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:74 +0x9dd
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildFromTablesRightDeep(0xc0005720c0, 0xc0002bd130, 0x1, 0x1, 0x0, 0x0, 0x0, 0xc0006184f0, 0x2000)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:1093 +0x99
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildFromTables(0xc0005720c0, 0xc0002bd130, 0x1, 0x1, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:1070 +0x159
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildFrom(0xc0005720c0, 0xc0002bd130, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:997 +0xab
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelectClause(0xc0005720c0, 0xc00012d3f0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:919 +0xc9
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelectStmtWithoutParens(0xc0005720c0, 0x1bb42e0, 0xc00012d3f0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:867 +0x70f
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelect.func1(0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:840 +0xaa
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).processWiths(0xc0005720c0, 0x0, 0xc0006184f0, 0xc00050ce58, 0x7fed6356ea00)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/with.go:29 +0x69
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelect(0xc0005720c0, 0xc0000debe0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc000618400, 0x3c0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:839 +0x567
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmt(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x4)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:258 +0x23c
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmtAtRoot(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:222 +0xe3
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).Build(0xc0005720c0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:193 +0x1b6
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).buildExpr(0xc000618000, 0xc0001dbd48, 0xc0006181d0, 0x1bc2d60)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1287 +0x2d2
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).optimizeExpr(0xc000618000, 0xc0001dbd40, 0x1bc2d60, 0xc00023c2d0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1297 +0x3f
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).OptBuild(0xc000618000, 0x5, 0x1800def, 0x5, 0xffffffffffffffff)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:703 +0x93
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).RunCommand(0xc000618000, 0x1bd0ac0, 0xc0001b9000, 0xc000194388, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:373 +0x9e6
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1.1(0xc0001b9000, 0xc000194388, 0xc00050db28, 0x51708d)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:228 +0x90
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective.func1(0xc000194388, 0xc0002109c0, 0xc0001b9000, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:291 +0x97
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective(0xc0001b9000, 0xc000194360, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:296 +0x76
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirectiveOrSubTest(0xc0001b9000, 0xc000194360, 0x0, 0x0, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:165 +0xdd
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runTestInternal(0xc0001b9000, 0xc00030ea20, 0x15, 0x1b75780, 0xc000010068, 0xc0002109c0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:129 +0xb8
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.RunTest(0xc0001b9000, 0xc00030ea20, 0x15, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:108 +0x1ec
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1(0xc0001b9000, 0xc00030ea20, 0x15)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:225 +0x117
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk(0xc0001b9000, 0xc00030ea20, 0x15, 0xc000224020)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:366 +0x3ea
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk.func1(0xc0001b9000)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:379 +0xd2
+testing.tRunner(0xc0001b9000, 0xc0005675c0)
+	/usr/local/go/src/testing/testing.go:909 +0xc9
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:960 +0x350
+
+FOO allocScope
+goroutine 130 [running]:
+runtime/debug.Stack(0x10, 0x0, 0x0)
+	/usr/local/go/src/runtime/debug/stack.go:24 +0x9d
+runtime/debug.PrintStack()
+	/usr/local/go/src/runtime/debug/stack.go:16 +0x22
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).allocScope(0xc0005720c0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:343 +0x68
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*scope).push(...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/scope.go:198
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildJoin(0xc0005720c0, 0xc00023c640, 0x0, 0x0, 0x0, 0xc0006184f0, 0xc00033ca68)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/join.go:98 +0x3c7
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildDataSource(0xc0005720c0, 0x1b8f1e0, 0xc00023c640, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:74 +0x9dd
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildFromTablesRightDeep(0xc0005720c0, 0xc0002bd130, 0x1, 0x1, 0x0, 0x0, 0x0, 0xc0006184f0, 0x2000)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:1093 +0x99
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildFromTables(0xc0005720c0, 0xc0002bd130, 0x1, 0x1, 0x0, 0x0, 0x0, 0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:1070 +0x159
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildFrom(0xc0005720c0, 0xc0002bd130, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc0006184f0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:997 +0xab
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelectClause(0xc0005720c0, 0xc00012d3f0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:919 +0xc9
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelectStmtWithoutParens(0xc0005720c0, 0x1bb42e0, 0xc00012d3f0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:867 +0x70f
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelect.func1(0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:840 +0xaa
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).processWiths(0xc0005720c0, 0x0, 0xc0006184f0, 0xc00050ce58, 0x7fed6356ea00)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/with.go:29 +0x69
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelect(0xc0005720c0, 0xc0000debe0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc000618400, 0x3c0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:839 +0x567
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmt(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x4)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:258 +0x23c
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmtAtRoot(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:222 +0xe3
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).Build(0xc0005720c0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:193 +0x1b6
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).buildExpr(0xc000618000, 0xc0001dbd48, 0xc0006181d0, 0x1bc2d60)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1287 +0x2d2
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).optimizeExpr(0xc000618000, 0xc0001dbd40, 0x1bc2d60, 0xc00023c2d0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1297 +0x3f
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).OptBuild(0xc000618000, 0x5, 0x1800def, 0x5, 0xffffffffffffffff)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:703 +0x93
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).RunCommand(0xc000618000, 0x1bd0ac0, 0xc0001b9000, 0xc000194388, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:373 +0x9e6
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1.1(0xc0001b9000, 0xc000194388, 0xc00050db28, 0x51708d)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:228 +0x90
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective.func1(0xc000194388, 0xc0002109c0, 0xc0001b9000, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:291 +0x97
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective(0xc0001b9000, 0xc000194360, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:296 +0x76
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirectiveOrSubTest(0xc0001b9000, 0xc000194360, 0x0, 0x0, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:165 +0xdd
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runTestInternal(0xc0001b9000, 0xc00030ea20, 0x15, 0x1b75780, 0xc000010068, 0xc0002109c0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:129 +0xb8
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.RunTest(0xc0001b9000, 0xc00030ea20, 0x15, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:108 +0x1ec
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1(0xc0001b9000, 0xc00030ea20, 0x15)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:225 +0x117
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk(0xc0001b9000, 0xc00030ea20, 0x15, 0xc000224020)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:366 +0x3ea
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk.func1(0xc0001b9000)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:379 +0xd2
+testing.tRunner(0xc0001b9000, 0xc0005675c0)
+	/usr/local/go/src/testing/testing.go:909 +0xc9
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:960 +0x350
+
+FOO allocScope
+goroutine 130 [running]:
+runtime/debug.Stack(0x10, 0x0, 0x0)
+	/usr/local/go/src/runtime/debug/stack.go:24 +0x9d
+runtime/debug.PrintStack()
+	/usr/local/go/src/runtime/debug/stack.go:16 +0x22
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).allocScope(0xc0005720c0, 0xc000211900)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:343 +0x68
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*scope).replace(...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/scope.go:205
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelectClause(0xc0005720c0, 0xc00012d3f0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:923 +0x13d
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelectStmtWithoutParens(0xc0005720c0, 0x1bb42e0, 0xc00012d3f0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:867 +0x70f
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelect.func1(0xc0006184f0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:840 +0xaa
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).processWiths(0xc0005720c0, 0x0, 0xc0006184f0, 0xc00050ce58, 0x7fed6356ea00)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/with.go:29 +0x69
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildSelect(0xc0005720c0, 0xc0000debe0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc000618400, 0x3c0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/select.go:839 +0x567
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmt(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x4)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:258 +0x23c
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).buildStmtAtRoot(0xc0005720c0, 0x1badbe0, 0xc0000debe0, 0x0, 0x0, 0x0, 0xc000618400, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:222 +0xe3
+github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder.(*Builder).Build(0xc0005720c0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder/builder.go:193 +0x1b6
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).buildExpr(0xc000618000, 0xc0001dbd48, 0xc0006181d0, 0x1bc2d60)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1287 +0x2d2
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).optimizeExpr(0xc000618000, 0xc0001dbd40, 0x1bc2d60, 0xc00023c2d0, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:1297 +0x3f
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).OptBuild(0xc000618000, 0x5, 0x1800def, 0x5, 0xffffffffffffffff)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:703 +0x93
+github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester.(*OptTester).RunCommand(0xc000618000, 0x1bd0ac0, 0xc0001b9000, 0xc000194388, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester/opt_tester.go:373 +0x9e6
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1.1(0xc0001b9000, 0xc000194388, 0xc00050db28, 0x51708d)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:228 +0x90
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective.func1(0xc000194388, 0xc0002109c0, 0xc0001b9000, 0x0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:291 +0x97
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirective(0xc0001b9000, 0xc000194360, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:296 +0x76
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runDirectiveOrSubTest(0xc0001b9000, 0xc000194360, 0x0, 0x0, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:165 +0xdd
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.runTestInternal(0xc0001b9000, 0xc00030ea20, 0x15, 0x1b75780, 0xc000010068, 0xc0002109c0, 0x0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:129 +0xb8
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.RunTest(0xc0001b9000, 0xc00030ea20, 0x15, 0xc0002109c0)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:108 +0x1ec
+github.com/cockroachdb/cockroach/pkg/sql/opt/xform_test.runDataDrivenTest.func1(0xc0001b9000, 0xc00030ea20, 0x15)
+	/go/src/github.com/cockroachdb/cockroach/pkg/sql/opt/xform/optimizer_test.go:225 +0x117
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk(0xc0001b9000, 0xc00030ea20, 0x15, 0xc000224020)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:366 +0x3ea
+github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven.Walk.func1(0xc0001b9000)
+	/go/src/github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/datadriven/datadriven.go:379 +0xd2
+testing.tRunner(0xc0001b9000, 0xc0005675c0)
+	/usr/local/go/src/testing/testing.go:909 +0xc9
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:960 +0x350
+--- FAIL: TestExternal (0.00s)
+    --- FAIL: TestExternal/foo (0.00s)
+        datadriven.go:165: 
+            testdata/external/foo:9: SELECT * FROM ab JOIN cd ON b=c WHERE b>1
+            expected:
+            meh
+            select
+             ├── columns: a:1!null b:2!null c:3!null d:4
+             ├── key: (1)
+             ├── fd: (1)-->(2), (3)-->(4), (2)==(3), (3)==(2)
+             ├── inner-join (hash)
+             │    ├── columns: a:1!null b:2!null c:3!null d:4
+             │    ├── key: (1)
+             │    ├── fd: (1)-->(2), (3)-->(4), (2)==(3), (3)==(2)
+             │    ├── scan ab
+             │    │    ├── columns: a:1!null b:2
+             │    │    ├── key: (1)
+             │    │    └── fd: (1)-->(2)
+             │    ├── scan cd
+             │    │    ├── columns: c:3!null d:4
+             │    │    ├── key: (3)
+             │    │    └── fd: (3)-->(4)
+             │    └── filters
+             │         └── b:2 = c:3 [outer=(2,3), constraints=(/2: (/NULL - ]; /3: (/NULL - ]), fd=(2)==(3), (3)==(2)]
+             └── filters
+                  └── b:2 > 1 [outer=(2), constraints=(/2: [/2 - ]; tight)]
+            
+            found:
+            select
+             ├── columns: a:1!null b:2!null c:3!null d:4
+             ├── key: (1)
+             ├── fd: (1)-->(2), (3)-->(4), (2)==(3), (3)==(2)
+             ├── inner-join (hash)
+             │    ├── columns: a:1!null b:2!null c:3!null d:4
+             │    ├── key: (1)
+             │    ├── fd: (1)-->(2), (3)-->(4), (2)==(3), (3)==(2)
+             │    ├── scan ab
+             │    │    ├── columns: a:1!null b:2
+             │    │    ├── key: (1)
+             │    │    └── fd: (1)-->(2)
+             │    ├── scan cd
+             │    │    ├── columns: c:3!null d:4
+             │    │    ├── key: (3)
+             │    │    └── fd: (3)-->(4)
+             │    └── filters
+             │         └── b:2 = c:3 [outer=(2,3), constraints=(/2: (/NULL - ]; /3: (/NULL - ]), fd=(2)==(3), (3)==(2)]
+             └── filters
+                  └── b:2 > 1 [outer=(2), constraints=(/2: [/2 - ]; tight)]
+FAIL
+FAIL	github.com/cockroachdb/cockroach/pkg/sql/opt/xform	0.026s
+FAIL
+Makefile:985: recipe for target 'test' failed
+make: *** [test] Error 1

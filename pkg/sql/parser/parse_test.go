@@ -1430,6 +1430,28 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestLol(t *testing.T) {
+	stmt, err := parser.ParseOne("SELECT * FROM ab JOIN cd ON b=c WHERE b>1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%#v\n", stmt.AST)
+	s := stmt.AST.(*tree.Select)
+	t.Logf("%#v\n", s.Select)
+	sc := s.Select.(*tree.SelectClause)
+	//j := sc.From.Tables[0].(*tree.JoinTableExpr)
+	//left := j.Left.(*tree.AliasedTableExpr)
+	//right := j.Right.(*tree.AliasedTableExpr)
+	//t.Logf("%#v\n", left)
+	//t.Logf("%#v\n", left.Expr.(*tree.TableName))
+	//t.Logf("%#v\n", right.Expr.(*tree.TableName))
+	//cond := j.Cond.(*tree.OnJoinCond)
+	//t.Logf("%#v\n", cond.Expr)
+	t.Logf("%#v\n", sc.Where.Expr.(*tree.ComparisonExpr))
+
+	t.Error("meh")
+}
+
 // TestParse2 verifies that we can parse the supplied SQL and regenerate the
 // expected SQL string from the syntax tree. Note that if the input and output
 // SQL strings are the same, the test case should go in TestParse instead.

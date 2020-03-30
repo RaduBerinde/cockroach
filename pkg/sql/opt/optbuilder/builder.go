@@ -12,6 +12,9 @@ package optbuilder
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"runtime/debug"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/delegate"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt"
@@ -183,6 +186,8 @@ func (b *Builder) Build() (err error) {
 
 	b.pushWithFrame()
 
+	fmt.Printf("\nBUILDING %s\n", b.stmt)
+
 	// Build the memo, and call SetRoot on the memo to indicate the root group
 	// and physical properties.
 	outScope := b.buildStmtAtRoot(b.stmt, nil /* desiredTypes */, b.allocScope())
@@ -334,6 +339,9 @@ func (b *Builder) buildStmt(
 }
 
 func (b *Builder) allocScope() *scope {
+	fmt.Fprintf(os.Stderr, "\nFOO allocScope\n")
+	debug.PrintStack()
+
 	if len(b.scopeAlloc) == 0 {
 		// scope is relatively large (~250 bytes), so only allocate in small
 		// chunks.

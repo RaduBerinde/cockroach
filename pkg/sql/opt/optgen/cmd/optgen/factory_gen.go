@@ -35,6 +35,7 @@ func (g *factoryGen) generate(compiled *lang.CompiledExpr, w io.Writer) {
 	g.w.writeIndent("package norm\n\n")
 
 	g.w.nestIndent("import (\n")
+	g.w.nestIndent("\"fmt\"\n")
 	g.w.writeIndent("\n")
 	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt\"\n")
 	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt/memo\"\n")
@@ -96,6 +97,7 @@ func (g *factoryGen) genConstructFuncs() {
 		}
 
 		g.w.nest(" {\n")
+		g.w.writeIndent("fmt.Printf(\"Construct%s\\n\")\n", define.Name)
 
 		if define.Tags.Contains("ListItem") {
 			g.w.writeIndent("item := memo.%s{", define.Name)
