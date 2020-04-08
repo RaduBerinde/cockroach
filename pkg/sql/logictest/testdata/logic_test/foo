@@ -1,0 +1,7 @@
+statement ok
+CREATE TABLE ab (a INT PRIMARY KEY, b INT, INDEX (b));
+CREATE TABLE cd (c INT PRIMARY KEY, d INT);
+
+query T
+SELECT url FROM [ EXPLAIN (DISTSQL) SELECT * FROM ab JOIN cd ON b=c WHERE b>1 ]
+----

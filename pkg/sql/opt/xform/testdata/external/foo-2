@@ -1,0 +1,70 @@
+
+initial:
+
+  select
+   ├── columns: a:1!null b:2!null c:3!null d:4
+   ├── key: (1)
+   ├── fd: (1)-->(2), (3)-->(4), (2)==(3), (3)==(2)
+   ├── inner-join (hash)
+   │    ├── columns: a:1!null b:2!null c:3!null d:4
+   │    ├── key: (1)
+   │    ├── fd: (1)-->(2), (3)-->(4), (2)==(3), (3)==(2)
+   │    ├── scan ab
+   │    │    ├── columns: a:1!null b:2
+   │    │    ├── key: (1)
+   │    │    └── fd: (1)-->(2)
+   │    ├── scan cd
+   │    │    ├── columns: c:3!null d:4
+   │    │    ├── key: (3)
+   │    │    └── fd: (3)-->(4)
+   │    └── filters
+   │         └── b:2 = c:3 [outer=(2,3), constraints=...
+   └── filters
+        └── b:2 > 1 [outer=(2), constraints=...
+
+  inner-join (hash)
+   ├── columns: a:1!null b:2!null c:3!null d:4
+   ├── key: (1)
+   ├── fd: (1)-->(2), (3)-->(4), (2)==(3), (3)==(2)
+   ├── scan ab
+   │    ├── columns: a:1!null b:2
+   │    ├── key: (1)
+   │    └── fd: (1)-->(2)
+   ├── scan cd
+   │    ├── columns: c:3!null d:4
+   │    ├── key: (3)
+   │    └── fd: (3)-->(4)
+   └── filters
+        ├── b:2 = c:3 [outer=(2,3), constraints=...
+        └── b:2 > 1 [outer=(2), constraints=...
+
+PushFilterIntoJoinLeftAndRight
+
+  inner-join (hash)
+   ├── columns: a:1!null b:2!null c:3!null d:4
+   ├── key: (1)
+   ├── fd: (1)-->(2), (3)-->(4), (2)==(3), (3)==(2)
+   ├── select
+   │    ├── columns: a:1!null b:2!null
+   │    ├── key: (1)
+   │    ├── fd: (1)-->(2)
+   │    ├── scan ab
+   │    │    ├── columns: a:1!null b:2
+   │    │    ├── key: (1)
+   │    │    └── fd: (1)-->(2)
+   │    └── filters
+   │         └── b:2 > 1 [outer=(2), constraints=...
+   ├── select
+   │    ├── columns: c:3!null d:4
+   │    ├── key: (3)
+   │    ├── fd: (3)-->(4)
+   │    ├── scan cd
+   │    │    ├── columns: c:3!null d:4
+   │    │    ├── key: (3)
+   │    │    └── fd: (3)-->(4)
+   │    └── filters
+   │         └── c:3 > 1 [outer=(3), constraints=...
+   └── filters
+        └── b:2 = c:3 [outer=(2,3), constraints=...
+
+

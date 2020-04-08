@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/opt"
@@ -197,6 +198,7 @@ func (s *scope) inGroupingContext() bool {
 func (s *scope) push() *scope {
 	r := s.builder.allocScope()
 	r.parent = s
+	fmt.Fprintf(os.Stderr, "\nFOO push %p parent=%p\n", r, r.parent)
 	return r
 }
 
@@ -204,6 +206,7 @@ func (s *scope) push() *scope {
 func (s *scope) replace() *scope {
 	r := s.builder.allocScope()
 	r.parent = s.parent
+	fmt.Fprintf(os.Stderr, "\nFOO replace %p parent=%p\n", r, r.parent)
 	return r
 }
 
