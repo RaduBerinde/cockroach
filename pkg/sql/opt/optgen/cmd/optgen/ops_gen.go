@@ -88,7 +88,23 @@ func (g *opsGen) genOperatorSyntaxTags() {
 }
 
 func (g *opsGen) genOperatorsByTag() {
-	for _, tag := range g.compiled.DefineTags {
+	if len(g.compiled.DefineTags) >= 32 {
+		panic("too many tags!")
+	}
+	fmt.Fprintf(g.w, "var tagBitmap = [...]uint32 {\n")
+
+	for _, define := range g.sorted {
+		value := uint32(0)
+		for tagIdx, tag := range g.compiled.DefineTags {
+			if define.Tags.Contains(tag) {
+				value |= (1 << uint32(tagIdx))
+			}
+		}
+		fmt.Fprintf(g.w, "  %sOp: 0x%08x,\n", define.Name, value)
+	}
+	fmt.Fprintf(g.w, "}\n")
+
+	for tagIdx, tag := range g.compiled.DefineTags {
 		fmt.Fprintf(g.w, "var %sOperators = [...]Operator{\n", tag)
 		for _, define := range g.sorted.WithTag(tag) {
 			fmt.Fprintf(g.w, "  %sOp,\n", define.Name)
@@ -97,22 +113,8 @@ func (g *opsGen) genOperatorsByTag() {
 
 		// Generate IsTag function.
 		fmt.Fprintf(g.w, "func Is%sOp(e Expr) bool {\n", tag)
-		fmt.Fprintf(g.w, "  switch e.Op() {\n")
-		fmt.Fprintf(g.w, "  case ")
-		for i, define := range g.sorted.WithTag(tag) {
-			if i != 0 {
-				fmt.Fprintf(g.w, ", ")
-			}
-			if ((i + 1) % 5) == 0 {
-				fmt.Fprintf(g.w, "\n    ")
-			}
-			fmt.Fprintf(g.w, "%sOp", define.Name)
-		}
-		fmt.Fprintf(g.w, ":\n")
-		fmt.Fprintf(g.w, "    return true\n")
-		fmt.Fprintf(g.w, "  }\n")
-		fmt.Fprintf(g.w, "  return false\n")
-		fmt.Fprintf(g.w, "}\n\n")
+		fmt.Fprintf(g.w, "  return (tagBitmap[e.Op()] & (1 << %d)) != 0\n", tagIdx)
+		fmt.Fprintf(g.w, "}\n")
 	}
 }
 
