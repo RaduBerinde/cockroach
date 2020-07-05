@@ -1,0 +1,71 @@
+# LogicTest: local
+
+query TTT
+EXPLAIN VALUES (1, 2, 3), (4, 5, 6)
+----
+values  ·     ·
+·       size  3 columns, 2 rows
+
+query TTTTT
+EXPLAIN (VERBOSE) VALUES (1, 2, 3), (4, 5, 6)
+----
+values  ·     ·                  (column1, column2, column3)  ·
+·       size  3 columns, 2 rows  ·                            ·
+
+query TTTTT
+EXPLAIN (VERBOSE, TYPES) VALUES (1, 2, 3), (4, 5, 6)
+----
+values  ·     ·                  (column1 int, column2 int, column3 int)  ·
+·       size  3 columns, 2 rows  ·                                        ·
+
+statement ok
+CREATE TABLE ab (a INT PRIMARY KEY, b INT)
+
+query TTT
+EXPLAIN SELECT * FROM ab
+----
+scan  ·  ·
+
+query TTTTT
+EXPLAIN (VERBOSE) SELECT * FROM ab
+----
+scan  ·  ·  (a, b)  ·
+
+query TTTTT
+EXPLAIN (VERBOSE) SELECT * FROM ab WHERE b > 1
+----
+filter     ·  ·  (a, b)  ·
+ └── scan  ·  ·  (a, b)  ·
+
+query TTTTT
+EXPLAIN (VERBOSE) SELECT a FROM ab WHERE b > 1
+----
+project         ·  ·  (a)     ·
+ └── filter     ·  ·  (a, b)  ·
+      └── scan  ·  ·  (a, b)  ·
+
+query TTTTT
+EXPLAIN (VERBOSE) SELECT * FROM ab, ab AS ab2 WHERE ab.a = ab2.b
+----
+hash-join  ·  ·  (a, b, a, b)  ·
+ ├── scan  ·  ·  (a, b)        ·
+ └── scan  ·  ·  (a, b)        ·
+
+query TTTTT
+EXPLAIN (VERBOSE) SELECT * FROM ab, ab AS ab2 WHERE ab.a = ab2.a
+----
+merge-join  ·  ·  (a, b, a, b)  ·
+ ├── scan   ·  ·  (a, b)        +a
+ └── scan   ·  ·  (a, b)        +a
+
+query TTTTT
+EXPLAIN (VERBOSE) SELECT MIN(a), SUM(a) FROM ab GROUP BY b
+----
+project     ·  ·  (min, sum)     ·
+ └── group  ·  ·  (b, min, sum)  ·
+
+query TTTTT
+EXPLAIN (VERBOSE) SELECT a FROM ab ORDER BY b
+----
+project    ·  ·  (a)     ·
+ └── sort  ·  ·  (a, b)  +b

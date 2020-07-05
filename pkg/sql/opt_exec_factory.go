@@ -23,6 +23,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/constraint"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/exec"
+	"github.com/cockroachdb/cockroach/pkg/sql/opt/exec/explain"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/invertedexpr"
 	"github.com/cockroachdb/cockroach/pkg/sql/row"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
@@ -1767,6 +1768,27 @@ func (ef *execFactory) ConstructCancelSessions(input exec.Node, ifExists bool) (
 		rows:     input.(planNode),
 		ifExists: ifExists,
 	}, nil
+}
+
+func (ef *execFactory) ConstructExplainPlan(
+	options *tree.ExplainOptions, buildFn func(ef exec.ExplainFactory) (exec.Plan, error),
+) (exec.Node, error) {
+	flags := explain.MakeFlags(options)
+
+	plan, err := buildFn(explain.NewFactory(ef, flags))
+	if err != nil {
+		return nil, err
+	}
+	n := &explainNewPlanNode{
+		flags: flags,
+		plan:  plan.(*explain.Plan),
+	}
+	if flags.Verbose {
+		n.columns = sqlbase.ExplainPlanVerboseColumns
+	} else {
+		n.columns = sqlbase.ExplainPlanColumns
+	}
+	return n, nil
 }
 
 // renderBuilder encapsulates the code to build a renderNode.

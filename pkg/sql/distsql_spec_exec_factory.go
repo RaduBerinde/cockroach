@@ -750,6 +750,12 @@ func (e *distSQLSpecExecFactory) ConstructExplain(
 	return constructExplainPlanNode(options, stmtType, plan.(*planTop), e.planner)
 }
 
+func (e *distSQLSpecExecFactory) ConstructExplainPlan(
+	options *tree.ExplainOptions, buildFn func(ef exec.ExplainFactory) (exec.Plan, error),
+) (exec.Node, error) {
+	return nil, unimplemented.NewWithIssue(47473, "experimental opt-driven distsql planning: explain plan")
+}
+
 func (e *distSQLSpecExecFactory) ConstructShowTrace(
 	typ tree.ShowTraceType, compact bool,
 ) (exec.Node, error) {

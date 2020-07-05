@@ -452,3 +452,10 @@ func (StubFactory) ConstructExport(
 ) (Node, error) {
 	return struct{}{}, nil
 }
+
+// ConstructExplainPlan is part of the exec.Factory interface.
+func (StubFactory) ConstructExplainPlan(
+	options *tree.ExplainOptions, build func(ef ExplainFactory) (Plan, error),
+) (Node, error) {
+	return nil, nil
+}

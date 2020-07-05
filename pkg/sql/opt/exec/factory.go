@@ -591,6 +591,22 @@ type Factory interface {
 		fileFormat string,
 		options []KVOption,
 	) (Node, error)
+
+	// ConstructExplainPlan returns a node that implements EXPLAIN (PLAN).
+	//
+	// The function creates an ExplainFactory and passes it to the given build
+	// function, which builds the query against that factory and returns the final
+	// plan.
+	ConstructExplainPlan(
+		options *tree.ExplainOptions,
+		buildFn func(ef ExplainFactory) (Plan, error),
+	) (Node, error)
+}
+
+type ExplainFactory interface {
+	Factory
+
+	AnnotateNode(n Node, key, value string)
 }
 
 // ScanParams contains all the parameters for a table scan.
