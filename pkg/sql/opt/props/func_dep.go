@@ -1560,6 +1560,26 @@ func (f *FuncDepSet) Verify() {
 	}
 }
 
+// Equals returns true if the two FuncDepSet are identical. The underlying
+// representations are compared; if the two sets are equivalent but have
+// different underlying representations, returns false.
+func (f *FuncDepSet) Equals(other *FuncDepSet) bool {
+	if f.hasKey != other.hasKey || !f.key.Equals(other.key) {
+		return false
+	}
+	if len(f.deps) != len(other.deps) {
+		return false
+	}
+	for i := range f.deps {
+		a, b := &f.deps[i], &other.deps[i]
+		if !(a.from.Equals(b.from) && a.to.Equals(b.to) && a.strict == b.strict && a.equiv == b.equiv) {
+			return false
+		}
+	}
+	return true
+
+}
+
 // StringOnlyFDs returns a string representation of the FDs (without the key
 // information).
 func (f FuncDepSet) StringOnlyFDs() string {

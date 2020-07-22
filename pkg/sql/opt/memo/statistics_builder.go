@@ -220,7 +220,7 @@ func (sb *statisticsBuilder) availabilityFromInput(e RelExpr) bool {
 		return t.leftProps.Stats.Available
 
 	case *WithScanExpr:
-		return t.BindingProps.Stats.Available
+		return t.RowCountStatsAvailable
 	}
 
 	available := true
@@ -2312,35 +2312,22 @@ func (sb *statisticsBuilder) buildWithScan(withScan *WithScanExpr, relProps *pro
 		// Short cut if cardinality is 0.
 		return
 	}
-	s.Available = sb.availabilityFromInput(withScan)
+	s.Available = withScan.RowCountStatsAvailable
+	s.RowCount = withScan.RowCount
 
-	inputStats := withScan.BindingProps.Stats
-
-	s.RowCount = inputStats.RowCount
 	sb.finalizeFromCardinality(relProps)
 }
 
 func (sb *statisticsBuilder) colStatWithScan(
 	colSet opt.ColSet, withScan *WithScanExpr,
 ) *props.ColumnStatistic {
-	s := &withScan.Relational().Stats
-	withProps := withScan.BindingProps
-	inColSet := opt.TranslateColSet(colSet, withScan.OutCols, withScan.InCols)
-
-	// We cannot call colStatLeaf on &withProps.Stats directly because it can
-	// modify it.
-	var statsCopy props.Statistics
-	statsCopy.CopyFrom(&withProps.Stats)
-
-	// TODO(rytaft): This would be more accurate if we could access the WithExpr
-	// itself.
-	inColStat := sb.colStatLeaf(inColSet, &statsCopy, &withProps.FuncDeps, withProps.NotNullCols)
-
-	colStat, _ := s.ColStats.Add(colSet)
-	colStat.DistinctCount = inColStat.DistinctCount
-	colStat.NullCount = inColStat.NullCount
-	sb.finalizeFromRowCountAndDistinctCounts(colStat, s)
-	return colStat
+	// TODO(radu): we don't have any real column statistics and we don't have
+	// access to the original expression. If we find cases where this is
+	// important, we can calculate them prior to creating the WithScan and store
+	// them in the operator.
+	relProps := withScan.Relational()
+	s := &relProps.Stats
+	return sb.colStatLeaf(colSet, s, &relProps.FuncDeps, relProps.NotNullCols)
 }
 
 // +--------------------------------+

@@ -1188,6 +1188,34 @@ func TestFuncDeps_MakeFullOuter(t *testing.T) {
 	verifyFD(t, outer, "")
 }
 
+func TestFuncDeps_Equals(t *testing.T) {
+	a := &props.FuncDepSet{}
+	b := &props.FuncDepSet{}
+	require.True(t, a.Equals(b))
+
+	a.AddConstants(c(1, 2))
+	require.False(t, a.Equals(b))
+	b.AddConstants(c(1, 2))
+	require.True(t, a.Equals(b))
+
+	a.AddStrictKey(c(3, 4), c(1, 2, 3, 4, 5, 6, 7))
+	require.False(t, a.Equals(b))
+	b.AddLaxKey(c(3, 4), c(1, 2, 3, 4, 5, 6, 7))
+	require.False(t, a.Equals(b))
+	b.AddStrictKey(c(3, 4), c(1, 2, 3, 4, 5, 6, 7))
+	require.True(t, a.Equals(b))
+
+	a.AddEquivalency(4, 5)
+	require.False(t, a.Equals(b))
+	b.AddEquivalency(4, 5)
+	require.True(t, a.Equals(b))
+
+	a.AddSynthesizedCol(c(3, 6), 7)
+	require.False(t, a.Equals(b))
+	b.AddSynthesizedCol(c(3, 6), 7)
+	require.True(t, a.Equals(b))
+}
+
 // Construct base table FD from figure 3.3, page 114:
 //   CREATE TABLE abcde (a INT PRIMARY KEY, b INT, c INT, d INT, e INT)
 //   CREATE UNIQUE INDEX ON abcde (b, c)

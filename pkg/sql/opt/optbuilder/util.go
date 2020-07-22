@@ -14,6 +14,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/opt"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
+	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
@@ -669,4 +670,26 @@ func findPublicTableColumnByName(tab cat.Table, name tree.Name) int {
 		}
 	}
 	return -1
+}
+
+func (b *Builder) constructWithScan(
+	id opt.WithID, name string, bindingProps *props.Relational, inCols, outCols opt.ColList,
+) memo.RelExpr {
+	private := &memo.WithScanPrivate{
+		With:                   id,
+		Cardinality:            bindingProps.Cardinality,
+		RowCount:               bindingProps.Stats.RowCount,
+		RowCountStatsAvailable: bindingProps.Stats.Available,
+		InCols:                 inCols,
+		OutCols:                outCols,
+		ID:                     b.factory.Metadata().NextUniqueID(),
+	}
+	// Derive the not null columns and the FDs.
+	private.NotNullOutCols = opt.TranslateColSet(bindingProps.NotNullCols, inCols, outCols)
+	private.OutFuncDeps.CopyFrom(&bindingProps.FuncDeps)
+	for i := range withScan.InCols {
+		private.OutFuncDeps.AddEquivalency(InCols[i], outCols[i])
+	}
+	private.FuncDeps.ProjectCols(outCols.ToSet())
+	return b.factory.ConstructWithScan(private)
 }

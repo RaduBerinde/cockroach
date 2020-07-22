@@ -805,7 +805,6 @@ func (b *logicalPropsBuilder) buildWithProps(with *WithExpr, rel *props.Relation
 
 func (b *logicalPropsBuilder) buildWithScanProps(withScan *WithScanExpr, rel *props.Relational) {
 	BuildSharedProps(withScan, &rel.Shared)
-	bindingProps := withScan.BindingProps
 
 	// Side Effects
 	// ------------
@@ -817,7 +816,7 @@ func (b *logicalPropsBuilder) buildWithScanProps(withScan *WithScanExpr, rel *pr
 
 	// Not Null Columns
 	// ----------------
-	rel.NotNullCols = opt.TranslateColSet(bindingProps.NotNullCols, withScan.InCols, withScan.OutCols)
+	rel.NotNullCols = withScan.NotNullOutCols
 
 	// Outer Columns
 	// -------------
@@ -827,16 +826,12 @@ func (b *logicalPropsBuilder) buildWithScanProps(withScan *WithScanExpr, rel *pr
 	// -----------------------
 	// Inherit dependencies from the referenced expression (remapping the
 	// columns).
-	rel.FuncDeps.CopyFrom(&bindingProps.FuncDeps)
-	for i := range withScan.InCols {
-		rel.FuncDeps.AddEquivalency(withScan.InCols[i], withScan.OutCols[i])
-	}
-	rel.FuncDeps.ProjectCols(withScan.OutCols.ToSet())
+	rel.FuncDeps.CopyFrom(&withScan.OutFuncDeps)
 
 	// Cardinality
 	// -----------
 	// Inherit from the referenced expression.
-	rel.Cardinality = bindingProps.Cardinality
+	rel.Cardinality = withScan.Cardinality
 
 	// Statistics
 	// ----------

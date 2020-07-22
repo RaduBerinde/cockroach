@@ -991,9 +991,6 @@ define WithScanPrivate {
     # With identifies the CTE to scan.
     With WithID
 
-    # BindingProps stores the relational properties of the referenced expression.
-    BindingProps RelPropsPtr
-
     # Name is used to identify the with being referenced for debugging purposes.
     Name string
 
@@ -1008,6 +1005,25 @@ define WithScanPrivate {
     # the same tree, so we maintain a mapping from the columns returned from
     # the referenced expression to the referencing expression.
     OutCols ColList
+
+    # Cardinality of the scan, inherited from the bound expression.
+    Cardinality Cardinality
+
+    # RowCount is the estimated row count of the scan, inherited from the bound
+    # expression.
+    RowCount float64
+
+    # RowCountStatsAvailable is true if RowCount is a "real" estimate that is
+    # based on underlying table statistics. See props.Statisics.Available.
+    RowCountStatsAvailable bool
+
+    # NotNullOutCols is the set of output columns that are known to be not-null;
+    # this information is derived from the bound expression.
+    NotNullOutCols ColSet
+
+    # OutFuncDeps is the set of FDs for the output columns, derived from the
+    # bound expression.
+    OutFuncDeps FuncDepSet
 
     # ID is a memo-unique identifier which distinguishes between identical
     # WithScan expressions which appear in different places in the query. In

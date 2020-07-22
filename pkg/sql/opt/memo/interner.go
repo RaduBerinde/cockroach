@@ -20,6 +20,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/opt"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/invertedexpr"
+	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/props/physical"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlbase"
@@ -643,6 +644,17 @@ func (h *hasher) HashPresentation(val physical.Presentation) {
 	}
 }
 
+func (h *hasher) HashCardinality(val props.Cardinality) {
+	h.HashUint64(uint64(val.Min)<<32 + uint64(val.Max))
+}
+
+func (h *hasher) HashFuncDepSet(val props.FuncDepSet) {
+	// FuncDepSet is only used in contexts where we don't expect multiple
+	// expressions that have different FuncDepSet fields but are otherwise
+	// identical. There would be no benefit to doing something expensive here.
+	// Note that IsFuncDepSetEqual ensures correctness in any case.
+}
+
 func (h *hasher) HashOpaqueMetadata(val opt.OpaqueMetadata) {
 	h.HashUint64(uint64(reflect.ValueOf(val).Pointer()))
 }
@@ -1034,6 +1046,14 @@ func (h *hasher) IsPresentationEqual(l, r physical.Presentation) bool {
 		}
 	}
 	return true
+}
+
+func (h *hasher) IsCardinalityEqual(l, r props.Cardinality) bool {
+	return l == r
+}
+
+func (h *hasher) IsFuncDepSetEqual(l, r props.FuncDepSet) bool {
+	return l.Equals(&r)
 }
 
 func (h *hasher) IsOpaqueMetadataEqual(l, r opt.OpaqueMetadata) bool {
