@@ -31,28 +31,28 @@ const (
 	tableIDMask = 0xffffffff
 )
 
-// ColumnID returns the metadata id of the column at the given ordinal position
-// in the table.
+//// ColumnID returns the metadata id of the column at the given ordinal position
+//// in the table.
+////
+//// NOTE: This method cannot do bounds checking, so it's up to the caller to
+////       ensure that a column really does exist at this ordinal position.
+//func (t TableID) ColumnID(ord int) ColumnID {
+//	return t.firstColID() + ColumnID(ord)
+//}
 //
-// NOTE: This method cannot do bounds checking, so it's up to the caller to
-//       ensure that a column really does exist at this ordinal position.
-func (t TableID) ColumnID(ord int) ColumnID {
-	return t.firstColID() + ColumnID(ord)
-}
-
-// ColumnOrdinal returns the ordinal position of the given column in its base
-// table.
-//
-// NOTE: This method cannot do complete bounds checking, so it's up to the
-//       caller to ensure that this column is really in the given base table.
-func (t TableID) ColumnOrdinal(id ColumnID) int {
-	if util.RaceEnabled {
-		if id < t.firstColID() {
-			panic(errors.AssertionFailedf("ordinal cannot be negative"))
-		}
-	}
-	return int(id - t.firstColID())
-}
+//// ColumnOrdinal returns the ordinal position of the given column in its base
+//// table.
+////
+//// NOTE: This method cannot do complete bounds checking, so it's up to the
+////       caller to ensure that this column is really in the given base table.
+//func (t TableID) ColumnOrdinal(id ColumnID) int {
+//	if util.RaceEnabled {
+//		if id < t.firstColID() {
+//			panic(errors.AssertionFailedf("ordinal cannot be negative"))
+//		}
+//	}
+//	return int(id - t.firstColID())
+//}
 
 // makeTableID constructs a new TableID from its component parts.
 func makeTableID(index int, firstColID ColumnID) TableID {
@@ -174,7 +174,7 @@ func (tm *TableMeta) IndexColumns(indexOrd int) ColSet {
 	var indexCols ColSet
 	for i, n := 0, index.ColumnCount(); i < n; i++ {
 		ord := index.Column(i).Ordinal
-		indexCols.Add(tm.MetaID.ColumnID(ord))
+		indexCols.Add(tm.ColumnID(ord))
 	}
 	return indexCols
 }
@@ -187,9 +187,27 @@ func (tm *TableMeta) IndexKeyColumns(indexOrd int) ColSet {
 	var indexCols ColSet
 	for i, n := 0, index.KeyColumnCount(); i < n; i++ {
 		ord := index.Column(i).Ordinal
-		indexCols.Add(tm.MetaID.ColumnID(ord))
+		indexCols.Add(tm.ColumnID(ord))
 	}
 	return indexCols
+}
+
+func (tm *TableMeta) ColumnID(ordinal int) ColumnID {
+	return tm.MetaID.firstColID() + ColumnID(ordinal)
+}
+
+func (tm *TableMeta) ColumnOrdinal(id ColumnID) int {
+	if util.RaceEnabled {
+		if id < tm.MetaID.firstColID() {
+			panic(errors.AssertionFailedf("ordinal cannot be negative"))
+		}
+	}
+	return int(id - tm.MetaID.firstColID())
+}
+
+func (tm *TableMeta) IndexColumnOrdinal(index cat.Index, i int) ColumnID {
+	// XXX
+	return tm.ColumnID(index.Column(i).Ordinal)
 }
 
 // SetConstraints sets the filters derived from check constraints; see

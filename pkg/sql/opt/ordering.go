@@ -51,7 +51,8 @@ func (c OrderingColumn) Descending() bool {
 
 // RemapColumn returns a new OrderingColumn that uses a ColumnID from the 'to'
 // table. The original ColumnID must be from the 'from' table.
-func (c OrderingColumn) RemapColumn(from, to TableID) OrderingColumn {
+func (c OrderingColumn) RemapColumn(from, to *TableMeta) OrderingColumn {
+	// XXX
 	ord := from.ColumnOrdinal(c.ID())
 	newColID := to.ColumnID(ord)
 	return MakeOrderingColumn(newColID, c.Descending())
