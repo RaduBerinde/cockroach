@@ -444,10 +444,15 @@ func (b *Builder) buildScan(
 	var tabColIDs opt.ColSet
 	addCol := func(ord int) {
 		col := tab.Column(ord)
+		kind := tab.ColumnKind(ord)
+		if kind == cat.Virtual {
+			// Ignore virtual columns.
+			return
+		}
 		colID := tabID.ColumnID(ord)
 		tabColIDs.Add(colID)
 		name := col.ColName()
-		isMutation := cat.IsMutationColumn(tab, ord)
+		isMutation := kind == cat.WriteOnly || kind == cat.DeleteOnly
 		outScope.cols = append(outScope.cols, scopeColumn{
 			id:       colID,
 			name:     name,
@@ -455,7 +460,7 @@ func (b *Builder) buildScan(
 			typ:      col.DatumType(),
 			hidden:   col.IsHidden() || isMutation,
 			mutation: isMutation,
-			system:   cat.IsSystemColumn(tab, ord),
+			system:   kind == cat.System,
 		})
 	}
 

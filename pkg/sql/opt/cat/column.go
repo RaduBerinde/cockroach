@@ -33,6 +33,9 @@ const (
 	// as part of mutations. They also cannot be part of the lax or key columns
 	// for indexes. System columns are not members of any column family.
 	System
+	// Virtual columns are implicit columns that are used by inverted indexes (and
+	// later, expression-based indexes).
+	Virtual
 )
 
 // Column is an interface to a table column, exposing only the information
@@ -43,6 +46,8 @@ type Column interface {
 	// than every column allocated before or after. This is true even if a column
 	// is dropped and then re-added with the same name; the new column will have
 	// a different ID. See the comment for StableID for more detail.
+	//
+	// Virtual columns don't have stable IDs; for these columns ColID() returns 0.
 	ColID() StableID
 
 	// ColName returns the name of the column.
@@ -100,6 +105,17 @@ type Column interface {
 	// computed columns, but they can depend on all other columns, including
 	// columns with default values.
 	ComputedExprStr() string
+
+	// InvertedColumnOrdinal is implemented by virtual columns that are part of
+	// inverted indexes. It returns the ordinal of the table column from which the
+	// inverted column is derived.
+	//
+	// For example, if we have an inverted index on a JSON column `j`, the index
+	// is on a virtual `j_inverted` column and calling InvertedColumnOrdinal() on
+	// `j_inverted` returns the ordinal of the `j` column.
+	//
+	// If this is not a virtual column for an inverted index, returns -1.
+	InvertedColumnOrdinal() int
 }
 
 // IsMutationColumn is a convenience function that returns true if the column at

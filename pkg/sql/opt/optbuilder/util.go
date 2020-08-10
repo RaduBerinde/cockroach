@@ -640,7 +640,7 @@ func resolveNumericColumnRefs(tab cat.Table, columns []tree.ColumnID) (ordinals 
 		ord := 0
 		cnt := tab.ColumnCount()
 		for ord < cnt {
-			if tab.Column(ord).ColID() == cat.StableID(c) && !cat.IsMutationColumn(tab, ord) {
+			if tab.ColumnKind(ord) == cat.Ordinary && tab.Column(ord).ColID() == cat.StableID(c) {
 				break
 			}
 			ord++
