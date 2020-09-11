@@ -23,7 +23,7 @@ project
  ├── scan xysd
  │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │    ├── key: (1)
- │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │    ├── prune: (1-5)
  │    └── interesting orderings: (+1) (-3,+4,+1)
  └── projections
@@ -42,7 +42,7 @@ project
  └── scan xysd
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
       ├── key: (1)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── prune: (1-5)
       └── interesting orderings: (+1) (-3,+4,+1)
 
@@ -59,13 +59,13 @@ project
  └── select
       ├── columns: x:1(int!null) xysd.y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       ├── key: (1)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── prune: (3-5)
       ├── interesting orderings: (+1) (-3,+4,+1)
       ├── scan xysd
       │    ├── columns: x:1(int!null) xysd.y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── key: (1)
-      │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
       │    ├── prune: (1-5)
       │    └── interesting orderings: (+1) (-3,+4,+1)
       └── filters
@@ -155,7 +155,7 @@ project
       │    └── scan xysd
       │         ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
       │         ├── key: (1)
-      │         ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │         ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
       │         ├── limit hint: 10.00
       │         ├── prune: (1-5)
       │         └── interesting orderings: (+1) (-3,+4,+1)
@@ -173,7 +173,7 @@ project
  ├── scan xysd
  │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │    ├── key: (1)
- │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │    ├── prune: (1-5)
  │    └── interesting orderings: (+1) (-3,+4,+1)
  └── projections
@@ -256,7 +256,7 @@ project
                           ├── scan xysd
                           │    ├── columns: x:5(int!null) xysd.y:6(int) s:7(string) d:8(decimal!null) xysd.crdb_internal_mvcc_timestamp:9(decimal)
                           │    ├── key: (5)
-                          │    ├── fd: (5)-->(6-9), (7,8)~~>(5,6,9)
+                          │    ├── fd: (5)-->(6-9), (7,8)~~>(5,6)
                           │    ├── prune: (5-9)
                           │    └── interesting orderings: (+5) (-7,+8,+5)
                           └── filters
@@ -290,7 +290,7 @@ project
                 ├── scan xysd
                 │    ├── columns: x:5(int!null) y:6(int) s:7(string) d:8(decimal!null) xysd.crdb_internal_mvcc_timestamp:9(decimal)
                 │    ├── key: (5)
-                │    ├── fd: (5)-->(6-9), (7,8)~~>(5,6,9)
+                │    ├── fd: (5)-->(6-9), (7,8)~~>(5,6)
                 │    ├── prune: (5-9)
                 │    └── interesting orderings: (+5) (-7,+8,+5)
                 └── projections
@@ -313,7 +313,7 @@ project
                                     ├── scan xysd
                                     │    ├── columns: x:10(int!null) y:11(int) s:12(string) d:13(decimal!null) xysd.crdb_internal_mvcc_timestamp:14(decimal)
                                     │    ├── key: (10)
-                                    │    ├── fd: (10)-->(11-14), (12,13)~~>(10,11,14)
+                                    │    ├── fd: (10)-->(11-14), (12,13)~~>(10,11)
                                     │    ├── prune: (10-14)
                                     │    └── interesting orderings: (+10) (-12,+13,+10)
                                     └── filters
@@ -333,7 +333,7 @@ project
  ├── scan xysd
  │    ├── columns: x:1(int!null) xysd.y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │    ├── key: (1)
- │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │    ├── prune: (1-5)
  │    └── interesting orderings: (+1) (-3,+4,+1)
  └── projections
@@ -352,7 +352,7 @@ project
  ├── scan xysd
  │    ├── columns: x:1(int!null) y:2(int) s:3(string) xysd.d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │    ├── key: (1)
- │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │    ├── prune: (1-5)
  │    └── interesting orderings: (+1) (-3,+4,+1)
  └── projections

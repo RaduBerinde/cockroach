@@ -30,11 +30,11 @@ Initial expression
         ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6 x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
         ├── immutable
         ├── key: (1,7)
-        ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6), (7)-->(8,9)
+        ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5), (7)-->(8,9)
         ├── scan a
         │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
         │    ├── key: (1)
-        │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+        │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
         ├── scan xy
         │    ├── columns: x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
         │    ├── key: (7)
@@ -53,11 +53,11 @@ NormalizeCmpPlusConst
   +      ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6 x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
          ├── immutable
          ├── key: (1,7)
-         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6), (7)-->(8,9)
+         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5), (7)-->(8,9)
          ├── scan a
          │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          ├── scan xy
          │    ├── columns: x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
          │    ├── key: (7)
@@ -76,12 +76,12 @@ FoldBinary
          ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6 x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
   -      ├── immutable
          ├── key: (1,7)
-  -      ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6), (7)-->(8,9)
-  +      ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5,6), (7)-->(8,9)
+  -      ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5), (7)-->(8,9)
+  +      ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5), (7)-->(8,9)
          ├── scan a
          │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          ├── scan xy
          │    ├── columns: x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
          │    ├── key: (7)
@@ -99,14 +99,14 @@ SimplifyJoinFilters
   + └── inner-join (hash)
          ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6 x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
   -      ├── key: (1,7)
-  -      ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5,6), (7)-->(8,9)
+  -      ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5), (7)-->(8,9)
   +      ├── multiplicity: left-rows(zero-or-one), right-rows(zero-or-one)
   +      ├── key: (7)
-  +      ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5,6), (7)-->(8,9), (1)==(7), (7)==(1)
+  +      ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5), (7)-->(8,9), (1)==(7), (7)==(1)
          ├── scan a
          │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          ├── scan xy
          │    ├── columns: x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
          │    ├── key: (7)
@@ -125,18 +125,18 @@ PushFilterIntoJoinLeft
          ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6 x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
          ├── multiplicity: left-rows(zero-or-one), right-rows(zero-or-one)
          ├── key: (7)
-         ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5,6), (7)-->(8,9), (1)==(7), (7)==(1)
+         ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5), (7)-->(8,9), (1)==(7), (7)==(1)
   -      ├── scan a
   -      │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      ├── select
   +      │    ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-  -      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
-  +      │    ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5,6)
+  -      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
+  +      │    ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5)
   +      │    ├── scan a
   +      │    │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      │    │    ├── key: (1)
-  +      │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  +      │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   +      │    └── filters
   +      │         └── i:2 = 9 [outer=(2), constraints=(/2: [/9 - /9]; tight), fd=()-->(2)]
          ├── scan xy
@@ -158,29 +158,29 @@ PruneJoinLeftCols
   +      ├── columns: k:1!null i:2!null s:4 x:7!null y:8 xy.crdb_internal_mvcc_timestamp:9
          ├── multiplicity: left-rows(zero-or-one), right-rows(zero-or-one)
          ├── key: (7)
-  -      ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5,6), (7)-->(8,9), (1)==(7), (7)==(1)
+  -      ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5), (7)-->(8,9), (1)==(7), (7)==(1)
   -      ├── select
   -      │    ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      ├── fd: ()-->(2), (1)-->(4), (7)-->(8,9), (1)==(7), (7)==(1)
   +      ├── project
   +      │    ├── columns: k:1!null i:2!null s:4
          │    ├── key: (1)
-  -      │    ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5,6)
+  -      │    ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5)
   -      │    ├── scan a
   -      │    │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   -      │    │    ├── key: (1)
-  -      │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  -      │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   -      │    └── filters
   -      │         └── i:2 = 9 [outer=(2), constraints=(/2: [/9 - /9]; tight), fd=()-->(2)]
   +      │    ├── fd: ()-->(2), (1)-->(4)
   +      │    └── select
   +      │         ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      │         ├── key: (1)
-  +      │         ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5,6)
+  +      │         ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5)
   +      │         ├── scan a
   +      │         │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      │         │    ├── key: (1)
-  +      │         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  +      │         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   +      │         └── filters
   +      │              └── i:2 = 9 [outer=(2), constraints=(/2: [/9 - /9]; tight), fd=()-->(2)]
          ├── scan xy
@@ -208,13 +208,13 @@ PruneSelectCols
   -      │         ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      │         ├── columns: k:1!null i:2!null s:4
          │         ├── key: (1)
-  -      │         ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5,6)
+  -      │         ├── fd: ()-->(2), (1)-->(3-6), (3,4)~~>(1,5)
   +      │         ├── fd: ()-->(2), (1)-->(4)
          │         ├── scan a
   -      │         │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      │         │    ├── columns: k:1!null i:2 s:4
          │         │    ├── key: (1)
-  -      │         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  -      │         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   +      │         │    └── fd: (1)-->(2,4)
          │         └── filters
          │              └── i:2 = 9 [outer=(2), constraints=(/2: [/9 - /9]; tight), fd=()-->(2)]
@@ -512,11 +512,11 @@ Initial expression
    └── select
         ├── columns: k:1!null i:2 f:3!null s:4!null j:5 crdb_internal_mvcc_timestamp:6
         ├── key: (1)
-        ├── fd: ()-->(4), (1)-->(2,3,5,6), (3)-->(1,2,5,6)
+        ├── fd: ()-->(4), (1)-->(2,3,5,6), (3)-->(1,2,5)
         ├── scan a
         │    ├── columns: k:1!null i:2 f:3 s:4 j:5 crdb_internal_mvcc_timestamp:6
         │    ├── key: (1)
-        │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+        │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
         └── filters
              └── (s:4 = 'foo') AND (f:3 > 100.0) [outer=(3,4), constraints=(/3: [/100.00000000000001 - ]; /4: [/'foo' - /'foo']; tight), fd=()-->(4)]
 ================================================================================
@@ -530,11 +530,11 @@ SimplifySelectFilters
     └── select
          ├── columns: k:1!null i:2 f:3!null s:4!null j:5 crdb_internal_mvcc_timestamp:6
          ├── key: (1)
-         ├── fd: ()-->(4), (1)-->(2,3,5,6), (3)-->(1,2,5,6)
+         ├── fd: ()-->(4), (1)-->(2,3,5,6), (3)-->(1,2,5)
          ├── scan a
          │    ├── columns: k:1!null i:2 f:3 s:4 j:5 crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          └── filters
   -           └── (s:4 = 'foo') AND (f:3 > 100.0) [outer=(3,4), constraints=(/3: [/100.00000000000001 - ]; /4: [/'foo' - /'foo']; tight), fd=()-->(4)]
   +           ├── s:4 = 'foo' [outer=(4), constraints=(/4: [/'foo' - /'foo']; tight), fd=()-->(4)]
@@ -551,13 +551,13 @@ PruneSelectCols
   -      ├── columns: k:1!null i:2 f:3!null s:4!null j:5 crdb_internal_mvcc_timestamp:6
   +      ├── columns: k:1!null f:3!null s:4!null
          ├── key: (1)
-  -      ├── fd: ()-->(4), (1)-->(2,3,5,6), (3)-->(1,2,5,6)
+  -      ├── fd: ()-->(4), (1)-->(2,3,5,6), (3)-->(1,2,5)
   +      ├── fd: ()-->(4), (1)-->(3), (3)-->(1)
          ├── scan a
   -      │    ├── columns: k:1!null i:2 f:3 s:4 j:5 crdb_internal_mvcc_timestamp:6
   +      │    ├── columns: k:1!null f:3 s:4
          │    ├── key: (1)
-  -      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  -      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   +      │    └── fd: (1)-->(3,4), (3,4)~~>(1)
          └── filters
               ├── s:4 = 'foo' [outer=(4), constraints=(/4: [/'foo' - /'foo']; tight), fd=()-->(4)]
@@ -639,11 +639,11 @@ Initial expression
    └── select
         ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
         ├── key: (1)
-        ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+        ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
         ├── scan a
         │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
         │    ├── key: (1)
-        │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+        │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
         └── filters
              └── exists [outer=(2), correlated-subquery]
                   └── project
@@ -673,11 +673,11 @@ PruneSelectCols
     └── select
          ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          ├── key: (1)
-         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          ├── scan a
          │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          └── filters
               └── exists [outer=(2), correlated-subquery]
                    └── project
@@ -711,11 +711,11 @@ EliminateProject
     └── select
          ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          ├── key: (1)
-         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          ├── scan a
          │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          └── filters
               └── exists [outer=(2), correlated-subquery]
   -                └── project
@@ -752,12 +752,12 @@ HoistSelectExists
     └── select
          ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          ├── key: (1)
-         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   -      ├── scan a
   +      ├── semi-join-apply
          │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-  -      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  -      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   -      └── filters
   -           └── exists [outer=(2), correlated-subquery]
   -                └── select
@@ -771,11 +771,11 @@ HoistSelectExists
   -                     │    └── fd: (7)-->(8)
   -                     └── filters
   -                          └── y:8 = i:2 [outer=(2,8), constraints=(/2: (/NULL - ]; /8: (/NULL - ]), fd=(2)==(8), (8)==(2)]
-  +      │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  +      │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   +      │    ├── scan a
   +      │    │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      │    │    ├── key: (1)
-  +      │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  +      │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   +      │    ├── select
   +      │    │    ├── columns: x:7!null y:8!null
   +      │    │    ├── outer: (2)
@@ -802,16 +802,16 @@ TryDecorrelateSelect
   -      ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          ├── key: (1)
-         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          ├── semi-join-apply
   -      │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      │    ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-         │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          │    ├── scan a
          │    │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    │    ├── key: (1)
-         │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   -      │    ├── select
   -      │    │    ├── columns: x:7!null y:8!null
   -      │    │    ├── outer: (2)
@@ -843,17 +843,17 @@ DecorrelateJoin
   -      ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          ├── key: (1)
-         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   -      ├── semi-join-apply
   -      │    ├── columns: k:1!null i:2!null f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      ├── semi-join (hash)
   +      │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-         │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          │    ├── scan a
          │    │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    │    ├── key: (1)
-         │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          │    ├── scan xy
          │    │    ├── columns: x:7!null y:8
          │    │    ├── key: (7)
@@ -872,15 +872,15 @@ PruneSemiAntiJoinRightCols
     └── select
          ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          ├── key: (1)
-         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          ├── semi-join (hash)
          │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-         │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          │    ├── scan a
          │    │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    │    ├── key: (1)
-         │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
          │    ├── scan xy
   -      │    │    ├── columns: x:7!null y:8
   -      │    │    ├── key: (7)
@@ -901,22 +901,22 @@ EliminateSelect
   + └── semi-join (hash)
          ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          ├── key: (1)
-         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+         ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   -      ├── semi-join (hash)
   +      ├── scan a
          │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
          │    ├── key: (1)
-  -      │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  -      │    ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   -      │    ├── scan a
   -      │    │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   -      │    │    ├── key: (1)
-  -      │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  -      │    │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   -      │    ├── scan xy
   -      │    │    └── columns: y:8
   -      │    └── filters
   -      │         └── y:8 = i:2 [outer=(2,8), constraints=(/2: (/NULL - ]; /8: (/NULL - ]), fd=(2)==(8), (8)==(2)]
   -      └── filters (true)
-  +      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  +      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   +      ├── scan xy
   +      │    └── columns: y:8
   +      └── filters
@@ -933,13 +933,13 @@ PruneJoinLeftCols
   -      ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      ├── columns: k:1!null i:2 f:3 s:4 j:5
          ├── key: (1)
-  -      ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  -      ├── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   +      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
          ├── scan a
   -      │    ├── columns: k:1!null i:2 f:3 s:4 j:5 a.crdb_internal_mvcc_timestamp:6
   +      │    ├── columns: k:1!null i:2 f:3 s:4 j:5
          │    ├── key: (1)
-  -      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+  -      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
   +      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
          ├── scan xy
          │    └── columns: y:8
@@ -1095,7 +1095,7 @@ Initial expression
              │         ├── scan a
              │         │    ├── columns: k:4!null i:5 f:6 s:7 j:8 a.crdb_internal_mvcc_timestamp:9
              │         │    ├── key: (4)
-             │         │    └── fd: (4)-->(5-9), (6,7)~~>(4,5,8,9)
+             │         │    └── fd: (4)-->(5-9), (6,7)~~>(4,5,8)
              │         └── filters
              │              └── k:4 = x:1 [outer=(1,4), constraints=(/1: (/NULL - ]; /4: (/NULL - ]), fd=(1)==(4), (4)==(1)]
              └── 5
@@ -1129,7 +1129,7 @@ PruneSelectCols
   -           │         │    ├── columns: k:4!null i:5 f:6 s:7 j:8 a.crdb_internal_mvcc_timestamp:9
   +           │         │    ├── columns: k:4!null i:5
               │         │    ├── key: (4)
-  -           │         │    └── fd: (4)-->(5-9), (6,7)~~>(4,5,8,9)
+  -           │         │    └── fd: (4)-->(5-9), (6,7)~~>(4,5,8)
   +           │         │    └── fd: (4)-->(5)
               │         └── filters
               │              └── k:4 = x:1 [outer=(1,4), constraints=(/1: (/NULL - ]; /4: (/NULL - ]), fd=(1)==(4), (4)==(1)]

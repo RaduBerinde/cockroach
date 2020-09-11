@@ -18,13 +18,13 @@ project
  └── select
       ├── columns: x:1(int!null) y:2(int) z:3(float!null) s:4(string) xyzs.crdb_internal_mvcc_timestamp:5(decimal)
       ├── key: (1)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── prune: (1-5)
       ├── interesting orderings: (+1) (-4,+3,+1)
       ├── scan xyzs
       │    ├── columns: x:1(int!null) y:2(int) z:3(float!null) s:4(string) xyzs.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── key: (1)
-      │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
       │    ├── prune: (1-5)
       │    └── interesting orderings: (+1) (-4,+3,+1)
       └── filters

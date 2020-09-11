@@ -1609,7 +1609,11 @@ func MakeTableFuncDep(md *opt.Metadata, tabID opt.TableID) *props.FuncDepSet {
 	var allCols opt.ColSet
 	tab := md.Table(tabID)
 	for i := 0; i < tab.ColumnCount(); i++ {
-		allCols.Add(tabID.ColumnID(i))
+		// Skip system columns; this is an optimization: we don't want useless FDs
+		// that in the vast majority of cases are not helpful.
+		if tab.Column(i).Kind() != cat.System {
+			allCols.Add(tabID.ColumnID(i))
+		}
 	}
 	var excludeColumn opt.ColumnID
 	if tab.IsVirtualTable() {

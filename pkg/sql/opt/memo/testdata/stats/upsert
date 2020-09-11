@@ -262,20 +262,20 @@ upsert uv
       ├── volatile
       ├── stats: [rows=1000]
       ├── lax-key: (8,10)
-      ├── fd: ()-->(13), (8)~~>(9), (10)-->(11,12), (11)~~>(10,12), (9,10)-->(14), (8,10)-->(15), (8,10)~~>(9,14)
+      ├── fd: ()-->(13), (8)~~>(9), (10)-->(11,12), (11)~~>(10), (9,10)-->(14), (8,10)-->(15), (8,10)~~>(9,14)
       ├── project
       │    ├── columns: v_new:13(int!null) z:8(int) column9:9(int) u:10(int) v:11(int) uv.crdb_internal_mvcc_timestamp:12(decimal)
       │    ├── volatile
       │    ├── stats: [rows=1000]
       │    ├── lax-key: (8,10)
-      │    ├── fd: ()-->(13), (8)~~>(9), (10)-->(11,12), (11)~~>(10,12)
+      │    ├── fd: ()-->(13), (8)~~>(9), (10)-->(11,12), (11)~~>(10)
       │    ├── left-join (hash)
       │    │    ├── columns: z:8(int) column9:9(int) u:10(int) v:11(int) uv.crdb_internal_mvcc_timestamp:12(decimal)
       │    │    ├── multiplicity: left-rows(exactly-one), right-rows(zero-or-one)
       │    │    ├── volatile
       │    │    ├── stats: [rows=1000, distinct(11)=991, null(11)=0]
       │    │    ├── lax-key: (8,10)
-      │    │    ├── fd: (8)~~>(9), (10)-->(11,12), (11)~~>(10,12)
+      │    │    ├── fd: (8)~~>(9), (10)-->(11,12), (11)~~>(10)
       │    │    ├── ensure-upsert-distinct-on
       │    │    │    ├── columns: z:8(int) column9:9(int)
       │    │    │    ├── grouping columns: z:8(int)
@@ -308,7 +308,7 @@ upsert uv
       │    │    │    ├── columns: u:10(int!null) v:11(int) uv.crdb_internal_mvcc_timestamp:12(decimal)
       │    │    │    ├── stats: [rows=1000, distinct(11)=991, null(11)=10]
       │    │    │    ├── key: (10)
-      │    │    │    └── fd: (10)-->(11,12), (11)~~>(10,12)
+      │    │    │    └── fd: (10)-->(11,12), (11)~~>(10)
       │    │    └── filters
       │    │         └── z:8 = v:11 [type=bool, outer=(8,11), constraints=(/8: (/NULL - ]; /11: (/NULL - ]), fd=(8)==(11), (11)==(8)]
       │    └── projections
@@ -346,18 +346,18 @@ upsert mno
       ├── columns: upsert_m:14(int) upsert_n:15(int) upsert_o:16(int) m:5(int!null) n:6(int) o:7(int) m:9(int) n:10(int) o:11(int) crdb_internal_mvcc_timestamp:12(decimal) o_new:13(int!null)
       ├── stats: [rows=2000]
       ├── key: (5,9)
-      ├── fd: ()-->(13), (5)-->(6,7), (6,7)~~>(5), (9)-->(10-12), (10,11)~~>(9,12), (5,9)-->(14), (6,9)-->(15), (7,9)-->(16)
+      ├── fd: ()-->(13), (5)-->(6,7), (6,7)~~>(5), (9)-->(10-12), (10,11)~~>(9), (5,9)-->(14), (6,9)-->(15), (7,9)-->(16)
       ├── project
       │    ├── columns: o_new:13(int!null) m:5(int!null) n:6(int) o:7(int) m:9(int) n:10(int) o:11(int) crdb_internal_mvcc_timestamp:12(decimal)
       │    ├── stats: [rows=2000]
       │    ├── key: (5,9)
-      │    ├── fd: ()-->(13), (5)-->(6,7), (6,7)~~>(5), (9)-->(10-12), (10,11)~~>(9,12)
+      │    ├── fd: ()-->(13), (5)-->(6,7), (6,7)~~>(5), (9)-->(10-12), (10,11)~~>(9)
       │    ├── left-join (hash)
       │    │    ├── columns: m:5(int!null) n:6(int) o:7(int) m:9(int) n:10(int) o:11(int) crdb_internal_mvcc_timestamp:12(decimal)
       │    │    ├── multiplicity: left-rows(exactly-one), right-rows(zero-or-one)
       │    │    ├── stats: [rows=2000, distinct(10)=21.0526316, null(10)=1988.94737, distinct(11)=21.0526316, null(11)=2000]
       │    │    ├── key: (5,9)
-      │    │    ├── fd: (5)-->(6,7), (6,7)~~>(5), (9)-->(10-12), (10,11)~~>(9,12)
+      │    │    ├── fd: (5)-->(6,7), (6,7)~~>(5), (9)-->(10-12), (10,11)~~>(9)
       │    │    ├── ensure-upsert-distinct-on
       │    │    │    ├── columns: m:5(int!null) n:6(int) o:7(int)
       │    │    │    ├── grouping columns: n:6(int) o:7(int)
@@ -374,7 +374,7 @@ upsert mno
       │    │    │    │         ├── columns: m:5(int!null) n:6(int) o:7(int) crdb_internal_mvcc_timestamp:8(decimal)
       │    │    │    │         ├── stats: [rows=2000, distinct(6)=100, null(6)=10, distinct(7)=1900, null(7)=100, distinct(6,7)=1981, null(6,7)=20]
       │    │    │    │         ├── key: (5)
-      │    │    │    │         └── fd: (5)-->(6-8), (6,7)~~>(5,8)
+      │    │    │    │         └── fd: (5)-->(6-8), (6,7)~~>(5)
       │    │    │    └── aggregations
       │    │    │         └── first-agg [as=m:5, type=int, outer=(5)]
       │    │    │              └── m:5 [type=int]
@@ -382,7 +382,7 @@ upsert mno
       │    │    │    ├── columns: m:9(int!null) n:10(int) o:11(int) crdb_internal_mvcc_timestamp:12(decimal)
       │    │    │    ├── stats: [rows=2000, distinct(10)=100, null(10)=10, distinct(11)=1900, null(11)=100]
       │    │    │    ├── key: (9)
-      │    │    │    └── fd: (9)-->(10-12), (10,11)~~>(9,12)
+      │    │    │    └── fd: (9)-->(10-12), (10,11)~~>(9)
       │    │    └── filters
       │    │         ├── n:6 = n:10 [type=bool, outer=(6,10), constraints=(/6: (/NULL - ]; /10: (/NULL - ]), fd=(6)==(10), (10)==(6)]
       │    │         └── o:7 = o:11 [type=bool, outer=(7,11), constraints=(/7: (/NULL - ]; /11: (/NULL - ]), fd=(7)==(11), (11)==(7)]

@@ -50,13 +50,13 @@ limit
  │         ├── columns: x:1(int!null) y:2(int) s:3(string!null) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │         ├── stats: [rows=200, distinct(3)=1, null(3)=0]
  │         ├── key: (1)
- │         ├── fd: ()-->(3), (1)-->(2,4,5), (4)-->(1,2,5)
+ │         ├── fd: ()-->(3), (1)-->(2,4,5), (4)-->(1,2)
  │         ├── limit hint: 5.00
  │         ├── scan a
  │         │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │         │    ├── stats: [rows=2000, distinct(1)=2000, null(1)=0, distinct(3)=10, null(3)=0, distinct(4)=200, null(4)=0]
  │         │    ├── key: (1)
- │         │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │         │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │         │    └── limit hint: 50.00
  │         └── filters
  │              └── s:3 = 'foo' [type=bool, outer=(3), constraints=(/3: [/'foo' - /'foo']; tight), fd=()-->(3)]
@@ -80,12 +80,12 @@ limit
  │         ├── columns: x:1(int!null) y:2(int) s:3(string!null) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │         ├── stats: [rows=200, distinct(3)=1, null(3)=0]
  │         ├── key: (1)
- │         ├── fd: ()-->(3), (1)-->(2,4,5), (4)-->(1,2,5)
+ │         ├── fd: ()-->(3), (1)-->(2,4,5), (4)-->(1,2)
  │         ├── scan a
  │         │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │         │    ├── stats: [rows=2000, distinct(1)=2000, null(1)=0, distinct(3)=10, null(3)=0, distinct(4)=200, null(4)=0]
  │         │    ├── key: (1)
- │         │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │         │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │         └── filters
  │              └── s:3 = 'foo' [type=bool, outer=(3), constraints=(/3: [/'foo' - /'foo']; tight), fd=()-->(3)]
  └── subquery [type=int]
@@ -142,7 +142,7 @@ select
  │    │              ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │    │              ├── stats: [rows=2000, distinct(1)=2000, null(1)=0, distinct(3)=10, null(3)=0, distinct(4)=200, null(4)=0]
  │    │              ├── key: (1)
- │    │              └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │    │              └── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │    └── 5 [type=int]
  └── filters
       └── s:3 = 'foo' [type=bool, outer=(3), constraints=(/3: [/'foo' - /'foo']; tight), fd=()-->(3)]
@@ -199,7 +199,7 @@ limit
  │         ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │         ├── stats: [rows=2000, distinct(2)=501, null(2)=1000, distinct(3)=11, null(3)=1000, distinct(2,3)=2000, null(2,3)=500]
  │         ├── key: (1)
- │         ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │         ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │         └── limit hint: 5.00
  └── 5 [type=int]
 
@@ -222,13 +222,13 @@ limit
  │         ├── columns: x:1(int!null) y:2(int) s:3(string!null) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │         ├── stats: [rows=100, distinct(2)=92.7652197, null(2)=50, distinct(3)=1, null(3)=0, distinct(2,3)=92.7652197, null(2,3)=0]
  │         ├── key: (1)
- │         ├── fd: ()-->(3), (1)-->(2,4,5), (4)-->(1,2,5)
+ │         ├── fd: ()-->(3), (1)-->(2,4,5), (4)-->(1,2)
  │         ├── limit hint: 5.00
  │         ├── scan a
  │         │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
  │         │    ├── stats: [rows=2000, distinct(1)=2000, null(1)=0, distinct(2)=501, null(2)=1000, distinct(3)=11, null(3)=1000, distinct(4)=200, null(4)=0, distinct(2,3)=2000, null(2,3)=500]
  │         │    ├── key: (1)
- │         │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │         │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │         │    └── limit hint: 100.00
  │         └── filters
  │              └── s:3 = 'foo' [type=bool, outer=(3), constraints=(/3: [/'foo' - /'foo']; tight), fd=()-->(3)]

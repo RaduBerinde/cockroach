@@ -97,18 +97,18 @@ project
  ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) u:6(int!null) v:7(int!null) rowid:8(int!null)
  ├── stats: [rows=10000, distinct(2)=400, null(2)=0]
  ├── key: (8)
- ├── fd: (1)-->(2-4), (3,4)~~>(1,2,6), (8)-->(1-4,6,7), (1)==(6), (6)==(1)
+ ├── fd: (1)-->(2-4), (3,4)~~>(1,2), (8)-->(1-4,6,7), (1)==(6), (6)==(1)
  └── inner-join (hash)
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int!null) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       ├── multiplicity: left-rows(zero-or-more), right-rows(zero-or-one)
       ├── stats: [rows=10000, distinct(1)=500, null(1)=0, distinct(2)=400, null(2)=0, distinct(6)=500, null(6)=0]
       ├── key: (8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9), (1)==(6), (6)==(1)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9), (1)==(6), (6)==(1)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(2)=400, null(2)=0, distinct(4)=500, null(4)=0]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(6)=500, null(6)=0, distinct(7)=100, null(7)=0, distinct(8)=10000, null(8)=0]
@@ -130,12 +130,12 @@ project
       ├── multiplicity: left-rows(one-or-more), right-rows(zero-or-one)
       ├── stats: [rows=10000, distinct(6)=500, null(6)=0]
       ├── key: (1,8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(4)=500, null(4)=0]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(6)=500, null(6)=0]
@@ -156,12 +156,12 @@ project
       ├── columns: x:1(int) y:2(int) s:3(string) d:4(decimal) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       ├── stats: [rows=10000, distinct(1)=500, null(1)=0]
       ├── key: (8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(1-7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(1-7,9)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(6)=500, null(6)=0, distinct(7)=100, null(7)=0, distinct(8)=10000, null(8)=0]
@@ -183,12 +183,12 @@ project
       ├── multiplicity: left-rows(one-or-more), right-rows(exactly-one)
       ├── stats: [rows=10000]
       ├── key: (1,8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(6)=500, null(6)=0]
@@ -208,12 +208,12 @@ project
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       ├── stats: [rows=50000000]
       ├── key: (1,8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000]
@@ -233,17 +233,17 @@ project
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal) x:6(int!null) y:7(int) s:8(string) d:9(decimal!null) crdb_internal_mvcc_timestamp:10(decimal)
       ├── stats: [rows=25000000]
       ├── key: (1,6)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (6)-->(7-10), (8,9)~~>(6,7,10)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (6)-->(7-10), (8,9)~~>(6,7)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan xysd
       │    ├── columns: x:6(int!null) y:7(int) s:8(string) d:9(decimal!null) crdb_internal_mvcc_timestamp:10(decimal)
       │    ├── stats: [rows=5000]
       │    ├── key: (6)
-      │    └── fd: (6)-->(7-10), (8,9)~~>(6,7,10)
+      │    └── fd: (6)-->(7-10), (8,9)~~>(6,7)
       └── filters (true)
 
 build
@@ -257,17 +257,17 @@ project
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       ├── stats: [rows=500000, distinct(7)=1, null(7)=0]
       ├── key: (1,8)
-      ├── fd: ()-->(7), (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,9)
+      ├── fd: ()-->(7), (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,9)
       ├── inner-join (cross)
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=50000000, distinct(1)=5000, null(1)=0, distinct(4)=500, null(4)=0, distinct(7)=100, null(7)=0, distinct(8)=10000, null(8)=0]
       │    ├── key: (1,8)
-      │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       │    ├── scan xysd
       │    │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(4)=500, null(4)=0]
       │    │    ├── key: (1)
-      │    │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       │    ├── scan uv
       │    │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    │    ├── stats: [rows=10000, distinct(7)=100, null(7)=0, distinct(8)=10000, null(8)=0]
@@ -295,12 +295,12 @@ group-by
  │         ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
  │         ├── stats: [rows=50000000, distinct(1,7)=500000, null(1,7)=0]
  │         ├── key: (1,8)
- │         ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+ │         ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
  │         ├── scan xysd
  │         │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
  │         │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0]
  │         │    ├── key: (1)
- │         │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+ │         │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
  │         ├── scan uv
  │         │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
  │         │    ├── stats: [rows=10000, distinct(7)=100, null(7)=0]
@@ -728,18 +728,18 @@ project
  ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) u:6(int!null) v:7(int!null) rowid:8(int!null)
  ├── stats: [rows=5000, distinct(2)=399.99851, null(2)=2500, distinct(3)=499.977311, null(3)=50, distinct(6)=499, null(6)=0, distinct(2,3)=3160.69477, null(2,3)=25, distinct(3,6)=5000, null(3,6)=0, distinct(1,2,8)=5000, null(1,2,8)=0]
  ├── key: (8)
- ├── fd: (1)-->(2-4), (3,4)~~>(1,2,6), (8)-->(1-4,6,7), (1)==(6), (6)==(1)
+ ├── fd: (1)-->(2-4), (3,4)~~>(1,2), (8)-->(1-4,6,7), (1)==(6), (6)==(1)
  └── inner-join (hash)
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int!null) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       ├── multiplicity: left-rows(zero-or-more), right-rows(zero-or-one)
       ├── stats: [rows=5000, distinct(1)=499, null(1)=0, distinct(2)=399.99851, null(2)=2500, distinct(3)=499.977311, null(3)=50, distinct(6)=499, null(6)=0, distinct(2,3)=3160.69477, null(2,3)=25, distinct(3,6)=5000, null(3,6)=0, distinct(1,2,8)=5000, null(1,2,8)=0]
       ├── key: (8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9), (1)==(6), (6)==(1)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9), (1)==(6), (6)==(1)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(2)=400, null(2)=2500, distinct(3)=500, null(3)=50, distinct(4)=500, null(4)=0, distinct(1,2)=5000, null(1,2)=0, distinct(2,3)=5000, null(2,3)=25]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(6)=500, null(6)=5000, distinct(7)=100, null(7)=0, distinct(8)=10000, null(8)=0]
@@ -761,12 +761,12 @@ project
       ├── multiplicity: left-rows(one-or-more), right-rows(zero-or-one)
       ├── stats: [rows=10000, distinct(2)=400, null(2)=5000, distinct(3)=500, null(3)=100, distinct(6)=500, null(6)=0, distinct(2,3)=5000, null(2,3)=50, distinct(3,6)=10000, null(3,6)=50, distinct(1,2,8)=10000, null(1,2,8)=0]
       ├── key: (1,8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(2)=400, null(2)=2500, distinct(3)=500, null(3)=50, distinct(4)=500, null(4)=0, distinct(1,2)=5000, null(1,2)=0, distinct(2,3)=5000, null(2,3)=25]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(6)=500, null(6)=5000, distinct(8)=10000, null(8)=0]
@@ -787,12 +787,12 @@ project
       ├── columns: x:1(int) y:2(int) s:3(string) d:4(decimal) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       ├── stats: [rows=10000, distinct(1)=500, null(1)=0, distinct(2)=400, null(2)=5000, distinct(3)=499.999999, null(3)=100, distinct(6)=500, null(6)=5000, distinct(2,3)=4323.45892, null(2,3)=50, distinct(3,6)=10000, null(3,6)=50, distinct(1,2,8)=10000, null(1,2,8)=0]
       ├── key: (8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(1-7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(1-7,9)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(2)=400, null(2)=2500, distinct(3)=500, null(3)=50, distinct(1,2)=5000, null(1,2)=0, distinct(2,3)=5000, null(2,3)=25]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(6)=500, null(6)=5000, distinct(7)=100, null(7)=0, distinct(8)=10000, null(8)=0]
@@ -814,12 +814,12 @@ project
       ├── multiplicity: left-rows(one-or-more), right-rows(exactly-one)
       ├── stats: [rows=10000, distinct(2)=400, null(2)=5000, distinct(3)=500, null(3)=100, distinct(6)=500, null(6)=5000, distinct(2,3)=5000, null(2,3)=50, distinct(3,6)=10000, null(3,6)=50, distinct(1,2,8)=10000, null(1,2,8)=0]
       ├── key: (1,8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(2)=400, null(2)=2500, distinct(3)=500, null(3)=50, distinct(1,2)=5000, null(1,2)=0, distinct(2,3)=5000, null(2,3)=25]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(6)=500, null(6)=5000, distinct(8)=10000, null(8)=0]
@@ -841,18 +841,18 @@ project
       ├── columns: x:1(int) y:2(int) s:3(string!null) d:4(decimal) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int) rowid:8(int) uv.crdb_internal_mvcc_timestamp:9(decimal)
       ├── stats: [rows=9900, distinct(2)=400, null(2)=4950, distinct(3)=500, null(3)=0, distinct(6)=500, null(6)=4950, distinct(2,3)=4999.5, null(2,3)=0, distinct(3,6)=9900, null(3,6)=0, distinct(1,2,8)=9900, null(1,2,8)=0]
       ├── key: (1,8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       ├── full-join (hash)
       │    ├── columns: x:1(int) y:2(int) s:3(string) d:4(decimal) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int) rowid:8(int) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── multiplicity: left-rows(one-or-more), right-rows(exactly-one)
       │    ├── stats: [rows=10000, distinct(2)=400, null(2)=5000, distinct(3)=500, null(3)=100, distinct(6)=500, null(6)=5000, distinct(2,3)=5000, null(2,3)=50, distinct(3,6)=10000, null(3,6)=50, distinct(1,2,8)=10000, null(1,2,8)=0]
       │    ├── key: (1,8)
-      │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      │    ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       │    ├── scan xysd
       │    │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    │    ├── stats: [rows=5000, distinct(1)=5000, null(1)=0, distinct(2)=400, null(2)=2500, distinct(3)=500, null(3)=50, distinct(1,2)=5000, null(1,2)=0, distinct(2,3)=5000, null(2,3)=25]
       │    │    ├── key: (1)
-      │    │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       │    ├── scan uv
       │    │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    │    ├── stats: [rows=10000, distinct(6)=500, null(6)=5000, distinct(8)=10000, null(8)=0]
@@ -877,12 +877,12 @@ project
       ├── columns: x:1(int) y:2(int) s:3(string) d:4(decimal) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int) rowid:8(int) uv.crdb_internal_mvcc_timestamp:9(decimal)
       ├── stats: [rows=50000000, distinct(2)=400, null(2)=25000000, distinct(3)=500, null(3)=500000, distinct(6)=500, null(6)=25000000, distinct(2,3)=5000, null(2,3)=250000, distinct(3,6)=250000, null(3,6)=250000, distinct(1,2,8)=50000000, null(1,2,8)=0]
       ├── key: (1,8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(2)=400, null(2)=2500, distinct(3)=500, null(3)=50, distinct(1,2)=5000, null(1,2)=0, distinct(2,3)=5000, null(2,3)=25]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(6)=500, null(6)=5000, distinct(8)=10000, null(8)=0]
@@ -902,12 +902,12 @@ project
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal) u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       ├── stats: [rows=50000000, distinct(2)=400, null(2)=25000000, distinct(1,2,8)=50000000, null(1,2,8)=0]
       ├── key: (1,8)
-      ├── fd: (1)-->(2-5), (3,4)~~>(1,2,5), (8)-->(6,7,9)
+      ├── fd: (1)-->(2-5), (3,4)~~>(1,2), (8)-->(6,7,9)
       ├── scan xysd
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) xysd.crdb_internal_mvcc_timestamp:5(decimal)
       │    ├── stats: [rows=5000, distinct(2)=400, null(2)=2500, distinct(1,2)=5000, null(1,2)=0]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2,5)
+      │    └── fd: (1)-->(2-5), (3,4)~~>(1,2)
       ├── scan uv
       │    ├── columns: u:6(int) v:7(int!null) rowid:8(int!null) uv.crdb_internal_mvcc_timestamp:9(decimal)
       │    ├── stats: [rows=10000, distinct(8)=10000, null(8)=0]

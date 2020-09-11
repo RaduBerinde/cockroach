@@ -25,7 +25,7 @@ project
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) b:5(bool) crdb_internal_mvcc_timestamp:6(decimal)
       ├── stats: [rows=2000]
       ├── key: (1)
-      └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+      └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
 
 # Check that boolean columns have distinct count 2 when there are no stats
 # available.
@@ -41,12 +41,12 @@ project
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) b:5(bool!null) crdb_internal_mvcc_timestamp:6(decimal)
       ├── stats: [rows=990, distinct(5)=1, null(5)=0]
       ├── key: (1)
-      ├── fd: ()-->(5), (1)-->(2-4,6), (3,4)~~>(1,2,6)
+      ├── fd: ()-->(5), (1)-->(2-4,6), (3,4)~~>(1,2)
       ├── scan a
       │    ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) b:5(bool) crdb_internal_mvcc_timestamp:6(decimal)
       │    ├── stats: [rows=2000, distinct(1)=2000, null(1)=0, distinct(4)=200, null(4)=0, distinct(5)=3, null(5)=20]
       │    ├── key: (1)
-      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+      │    └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
       └── filters
            └── b:5 [type=bool, outer=(5), constraints=(/5: [/true - /true]; tight), fd=()-->(5)]
 
@@ -103,7 +103,7 @@ project
       ├── columns: x:1(int!null) y:2(int) s:3(string) d:4(decimal!null) b:5(bool) crdb_internal_mvcc_timestamp:6(decimal)
       ├── stats: [rows=3000]
       ├── key: (1)
-      └── fd: (1)-->(2-6), (3,4)~~>(1,2,5,6)
+      └── fd: (1)-->(2-6), (3,4)~~>(1,2,5)
 
 # Test constrained scan.
 opt
