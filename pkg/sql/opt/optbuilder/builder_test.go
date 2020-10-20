@@ -19,14 +19,13 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/optbuilder"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/exprgen"
+	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/testcat"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/xform"
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/datadriven"
 )
@@ -47,9 +46,9 @@ import (
 //
 //    The supported args (in addition to the ones supported by OptTester):
 //
-//      - vars=(type1,type2,...)
+//      - vars=(var1 type1,var2 type2,...)
 //
-//        Information about IndexedVar columns.
+//        Information about columns that the scalar expression can refer to.
 //
 func TestBuilder(t *testing.T) {
 	defer leaktest.AfterTest(t)()
@@ -58,8 +57,7 @@ func TestBuilder(t *testing.T) {
 		catalog := testcat.New()
 
 		datadriven.RunTest(t, path, func(t *testing.T, d *datadriven.TestData) string {
-			var varTypes []*types.T
-			var err error
+			var vars testutils.ScalarVars
 
 			tester := opttester.New(catalog, d.Input)
 			tester.Flags.ExprFormat = memo.ExprFmtHideMiscProps |
@@ -80,7 +78,8 @@ func TestBuilder(t *testing.T) {
 					key, vals := arg.Key, arg.Vals
 					switch key {
 					case "vars":
-						varTypes, err = exprgen.ParseTypes(vals)
+						var error err
+						sv, err = testutils.MakeScalarVars(strings.Join(vals, ", "))
 						if err != nil {
 							d.Fatalf(t, "%v", err)
 						}
@@ -105,9 +104,7 @@ func TestBuilder(t *testing.T) {
 
 				var o xform.Optimizer
 				o.Init(&evalCtx, catalog)
-				for i, typ := range varTypes {
-					o.Memo().Metadata().AddColumn(fmt.Sprintf("@%d", i+1), typ)
-				}
+				sv.AddToMetadata(o.Memo().Metadata())
 				// Disable normalization rules: we want the tests to check the result
 				// of the build process.
 				o.DisableOptimizations()
