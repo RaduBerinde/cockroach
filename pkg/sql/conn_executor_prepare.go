@@ -63,10 +63,11 @@ func (ex *connExecutor) execPrepare(
 		}
 	}
 
+	stmt := newStatement(parseCmd.Statement, ex.generateID())
 	ps, err := ex.addPreparedStmt(
 		ctx,
 		parseCmd.Name,
-		Statement{Statement: parseCmd.Statement},
+		stmt,
 		parseCmd.TypeHints,
 		PreparedStatementOriginWire,
 	)
@@ -108,7 +109,7 @@ func (ex *connExecutor) execPrepare(
 func (ex *connExecutor) addPreparedStmt(
 	ctx context.Context,
 	name string,
-	stmt Statement,
+	stmt *Statement,
 	placeholderHints tree.PlaceholderTypes,
 	origin PreparedStatementOrigin,
 ) (*PreparedStatement, error) {
@@ -138,7 +139,7 @@ func (ex *connExecutor) addPreparedStmt(
 // returned PreparedStatement needs to be close()d once its no longer in use.
 func (ex *connExecutor) prepare(
 	ctx context.Context,
-	stmt Statement,
+	stmt *Statement,
 	placeholderHints tree.PlaceholderTypes,
 	origin PreparedStatementOrigin,
 ) (*PreparedStatement, error) {
@@ -166,6 +167,7 @@ func (ex *connExecutor) prepare(
 		return prepared, nil
 	}
 	prepared.Statement = stmt.Statement
+	prepared.AnonymizedStr = stmt.AnonymizedStr
 
 	// Point to the prepared state, which can be further populated during query
 	// preparation.
@@ -189,7 +191,7 @@ func (ex *connExecutor) prepare(
 		ex.statsCollector.reset(&ex.server.sqlStats, ex.appStats, &ex.phaseTimes)
 		p := &ex.planner
 		ex.resetPlanner(ctx, p, txn, ex.server.cfg.Clock.PhysicalTime() /* stmtTS */)
-		p.stmt = &stmt
+		p.stmt = stmt
 		p.semaCtx.Annotations = tree.MakeAnnotations(stmt.NumAnnotations)
 		flags, err = ex.populatePrepared(ctx, txn, placeholderHints, p)
 		return err

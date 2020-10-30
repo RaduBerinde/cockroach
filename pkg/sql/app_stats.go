@@ -236,14 +236,9 @@ func (a *appStats) getStatsForStmt(
 	// Extend the statement key with various characteristics, so
 	// that we use separate buckets for the different situations.
 	key := stmtKey{
-		failed:      err != nil,
-		implicitTxn: implicitTxn,
-	}
-	if stmt.AnonymizedStr != "" {
-		// Use the cached anonymized string.
-		key.anonymizedStmt = stmt.AnonymizedStr
-	} else {
-		key.anonymizedStmt = anonymizeStmt(stmt.AST)
+		anonymizedStmt: stmt.AnonymizedStr,
+		failed:         err != nil,
+		implicitTxn:    implicitTxn,
 	}
 
 	// We first try and see if we can get by without creating a new entry for this

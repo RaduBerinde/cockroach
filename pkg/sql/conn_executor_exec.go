@@ -62,7 +62,7 @@ import (
 // pinfo: The values to use for the statement's placeholders. If nil is passed,
 // 	 then the statement cannot have any placeholder.
 func (ex *connExecutor) execStmt(
-	ctx context.Context, stmt Statement, res RestrictedCommandResult, pinfo *tree.PlaceholderInfo,
+	ctx context.Context, stmt *Statement, res RestrictedCommandResult, pinfo *tree.PlaceholderInfo,
 ) (fsm.Event, fsm.EventPayload, error) {
 	if log.V(2) || logStatementsExecuteEnabled.Get(&ex.server.cfg.Settings.SV) ||
 		log.HasSpanOrEvent(ctx) {
@@ -82,9 +82,6 @@ func (ex *connExecutor) execStmt(
 		// generate error events; transactions are always allowed to continue.
 		return nil, nil, err
 	}
-
-	queryID := ex.generateID()
-	stmt.queryID = queryID
 
 	// Dispatch the statement for execution based on the current state.
 	var ev fsm.Event
@@ -173,13 +170,8 @@ func (ex *connExecutor) execPortal(
 	stmtRes CommandResult,
 	pinfo *tree.PlaceholderInfo,
 ) (ev fsm.Event, payload fsm.EventPayload, err error) {
-	curStmt := Statement{
-		Statement:     portal.Stmt.Statement,
-		Prepared:      portal.Stmt,
-		ExpectedTypes: portal.Stmt.Columns,
-		AnonymizedStr: portal.Stmt.AnonymizedStr,
-	}
-	stmtCtx := withStatement(ctx, ex.curStmt)
+	curStmt := newStatementFromPrepared(portal.Stmt, ex.generateID())
+	stmtCtx := withStatement(ctx, ex.curStmtAST)
 	switch ex.machine.CurState().(type) {
 	case stateOpen:
 		// We're about to execute the statement in an open state which
@@ -233,7 +225,7 @@ func (ex *connExecutor) execPortal(
 //
 // The returned event can be nil if no state transition is required.
 func (ex *connExecutor) execStmtInOpenState(
-	ctx context.Context, stmt Statement, res RestrictedCommandResult, pinfo *tree.PlaceholderInfo,
+	ctx context.Context, stmt *Statement, res RestrictedCommandResult, pinfo *tree.PlaceholderInfo,
 ) (retEv fsm.Event, retPayload fsm.EventPayload, retErr error) {
 	ex.incrementStartedStmtCounter(stmt)
 	defer func() {
@@ -254,7 +246,7 @@ func (ex *connExecutor) execStmtInOpenState(
 
 	// Canceling a query cancels its transaction's context so we take a reference
 	// to the cancelation function here.
-	unregisterFn := ex.addActiveQuery(stmt.queryID, stmt, ex.state.cancel)
+	unregisterFn := ex.addActiveQuery(stmt.QueryID, stmt, ex.state.cancel)
 
 	// queryDone is a cleanup function dealing with unregistering a query.
 	// It also deals with overwriting res.Error to a more user-friendly message in
@@ -412,7 +404,7 @@ func (ex *connExecutor) execStmtInOpenState(
 		timeoutTicker = time.AfterFunc(
 			timerDuration,
 			func() {
-				ex.cancelQuery(stmt.queryID)
+				ex.cancelQuery(stmt.QueryID)
 				queryTimedOut = true
 				doneAfterFunc <- struct{}{}
 			})
@@ -490,22 +482,21 @@ func (ex *connExecutor) execStmtInOpenState(
 				typeHints[i] = resolved
 			}
 		}
-		if _, err := ex.addPreparedStmt(
-			ctx, name,
-			Statement{
-				Statement: parser.Statement{
-					// We need the SQL string just for the part that comes after
-					// "PREPARE ... AS",
-					// TODO(radu): it would be nice if the parser would figure out this
-					// string and store it in tree.Prepare.
-					SQL:             tree.AsStringWithFlags(s.Statement, tree.FmtParsable),
-					AST:             s.Statement,
-					NumPlaceholders: stmt.NumPlaceholders,
-					NumAnnotations:  stmt.NumAnnotations,
-				},
+		stmt := newStatement(
+			parser.Statement{
+				// We need the SQL string just for the part that comes after
+				// "PREPARE ... AS",
+				// TODO(radu): it would be nice if the parser would figure out this
+				// string and store it in tree.Prepare.
+				SQL:             tree.AsStringWithFlags(s.Statement, tree.FmtParsable),
+				AST:             s.Statement,
+				NumPlaceholders: stmt.NumPlaceholders,
+				NumAnnotations:  stmt.NumAnnotations,
 			},
-			typeHints,
-			PreparedStatementOriginSQL,
+			ex.generateID(),
+		)
+		if _, err := ex.addPreparedStmt(
+			ctx, name, stmt, typeHints, PreparedStatementOriginSQL,
 		); err != nil {
 			return makeErrEvent(err)
 		}
@@ -632,7 +623,7 @@ func (ex *connExecutor) execStmtInOpenState(
 	}
 	p.extendedEvalCtx.Placeholders = &p.semaCtx.Placeholders
 	p.extendedEvalCtx.Annotations = &p.semaCtx.Annotations
-	p.stmt = &stmt
+	p.stmt = stmt
 	p.cancelChecker = cancelchecker.NewCancelChecker(ctx)
 	p.autoCommit = os.ImplicitTxn.Get() && !ex.server.cfg.TestingKnobs.DisableAutoCommit
 	if err := ex.dispatchToExecutionEngine(ctx, p, res); err != nil {
@@ -834,10 +825,10 @@ func (ex *connExecutor) dispatchToExecutionEngine(
 	ex.statsCollector.phaseTimes[plannerStartExecStmt] = timeutil.Now()
 
 	ex.mu.Lock()
-	queryMeta, ok := ex.mu.ActiveQueries[stmt.queryID]
+	queryMeta, ok := ex.mu.ActiveQueries[stmt.QueryID]
 	if !ok {
 		ex.mu.Unlock()
-		panic(errors.AssertionFailedf("query %d not in registry", stmt.queryID))
+		panic(errors.AssertionFailedf("query %d not in registry", stmt.QueryID))
 	}
 	queryMeta.phase = executing
 	// TODO(yuzefovich): introduce ternary PlanDistribution into queryMeta.
@@ -1065,7 +1056,7 @@ func (ex *connExecutor) beginTransactionTimestampsAndReadMode(
 // the cursor is not advanced. This means that the statement will run again in
 // stateOpen, at each point its results will also be flushed.
 func (ex *connExecutor) execStmtInNoTxnState(
-	ctx context.Context, stmt Statement,
+	ctx context.Context, stmt *Statement,
 ) (_ fsm.Event, payload fsm.EventPayload) {
 	switch s := stmt.AST.(type) {
 	case *tree.BeginTransaction:
@@ -1109,7 +1100,7 @@ func (ex *connExecutor) execStmtInNoTxnState(
 // - ROLLBACK TO SAVEPOINT / SAVEPOINT: reopens the current transaction,
 //   allowing it to be retried.
 func (ex *connExecutor) execStmtInAbortedState(
-	ctx context.Context, stmt Statement, res RestrictedCommandResult,
+	ctx context.Context, stmt *Statement, res RestrictedCommandResult,
 ) (_ fsm.Event, payload fsm.EventPayload) {
 	ex.incrementStartedStmtCounter(stmt)
 	defer func() {
@@ -1163,7 +1154,7 @@ func (ex *connExecutor) execStmtInAbortedState(
 // CommitWait.
 // Everything but COMMIT/ROLLBACK causes errors. ROLLBACK is treated like COMMIT.
 func (ex *connExecutor) execStmtInCommitWaitState(
-	stmt Statement, res RestrictedCommandResult,
+	stmt *Statement, res RestrictedCommandResult,
 ) (ev fsm.Event, payload fsm.EventPayload) {
 	ex.incrementStartedStmtCounter(stmt)
 	defer func() {
@@ -1190,7 +1181,7 @@ func (ex *connExecutor) execStmtInCommitWaitState(
 //
 // If an error is returned, the connection needs to stop processing queries.
 func (ex *connExecutor) runObserverStatement(
-	ctx context.Context, stmt Statement, res RestrictedCommandResult,
+	ctx context.Context, stmt *Statement, res RestrictedCommandResult,
 ) error {
 	switch sqlStmt := stmt.AST.(type) {
 	case *tree.ShowTransactionStatus:
@@ -1332,7 +1323,7 @@ func (ex *connExecutor) enableTracing(modes []string) error {
 // longer executing. NOTE(andrei): As of Feb 2018, "executing" does not imply
 // that the results have been delivered to the client.
 func (ex *connExecutor) addActiveQuery(
-	queryID ClusterWideID, stmt Statement, cancelFun context.CancelFunc,
+	queryID ClusterWideID, stmt *Statement, cancelFun context.CancelFunc,
 ) func() {
 
 	_, hidden := stmt.AST.(tree.HiddenFromShowQueries)
@@ -1400,13 +1391,13 @@ func (ex *connExecutor) handleAutoCommit(
 
 // incrementStartedStmtCounter increments the appropriate started
 // statement counter for stmt's type.
-func (ex *connExecutor) incrementStartedStmtCounter(stmt Statement) {
+func (ex *connExecutor) incrementStartedStmtCounter(stmt *Statement) {
 	ex.metrics.StartedStatementCounters.incrementCount(ex, stmt.AST)
 }
 
 // incrementExecutedStmtCounter increments the appropriate executed
 // statement counter for stmt's type.
-func (ex *connExecutor) incrementExecutedStmtCounter(stmt Statement) {
+func (ex *connExecutor) incrementExecutedStmtCounter(stmt *Statement) {
 	ex.metrics.ExecutedStatementCounters.incrementCount(ex, stmt.AST)
 }
 

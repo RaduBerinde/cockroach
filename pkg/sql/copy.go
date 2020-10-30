@@ -23,6 +23,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/resolver"
+	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwirebase"
@@ -482,15 +483,17 @@ func (c *copyMachine) insertRows(ctx context.Context) (retErr error) {
 	c.rows = c.rows[:0]
 	c.rowsMemAcc.Clear(ctx)
 
-	c.p.stmt = &Statement{}
-	c.p.stmt.AST = &tree.Insert{
-		Table:   c.table,
-		Columns: c.columns,
-		Rows: &tree.Select{
-			Select: vc,
-		},
-		Returning: tree.AbsentReturningClause,
-	}
+	c.p.stmt = newStatement(
+		parser.Statement{
+			AST: &tree.Insert{
+				Table:   c.table,
+				Columns: c.columns,
+				Rows: &tree.Select{
+					Select: vc,
+				},
+				Returning: tree.AbsentReturningClause,
+			},
+		}, ClusterWideID{} /* queryID */)
 	if err := c.p.makeOptimizerPlan(ctx); err != nil {
 		return err
 	}

@@ -19,9 +19,10 @@ import (
 type Statement struct {
 	parser.Statement
 
-	ExpectedTypes colinfo.ResultColumns
 	AnonymizedStr string
-	queryID       ClusterWideID
+	QueryID       ClusterWideID
+
+	ExpectedTypes colinfo.ResultColumns
 
 	// Prepared is non-nil during the PREPARE phase, as well as during EXECUTE of
 	// a previously prepared statement. The Prepared statement can be modified
@@ -34,6 +35,24 @@ type Statement struct {
 	// Given that the PreparedStatement can be modified during planning, it is
 	// not safe for use on multiple threads.
 	Prepared *PreparedStatement
+}
+
+func newStatement(stmt parser.Statement, queryID ClusterWideID) *Statement {
+	return &Statement{
+		Statement:     stmt,
+		AnonymizedStr: anonymizeStmt(stmt.AST),
+		QueryID:       queryID,
+	}
+}
+
+func newStatementFromPrepared(prepared *PreparedStatement, queryID ClusterWideID) *Statement {
+	return &Statement{
+		Statement:     prepared.Statement,
+		Prepared:      prepared,
+		ExpectedTypes: prepared.Columns,
+		AnonymizedStr: prepared.AnonymizedStr,
+		QueryID:       queryID,
+	}
 }
 
 func (s Statement) String() string {

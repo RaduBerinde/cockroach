@@ -51,8 +51,6 @@ func (p *planner) prepareUsingOptimizer(ctx context.Context) (planFlags, error) 
 	opc := &p.optPlanningCtx
 	opc.reset()
 
-	stmt.Prepared.AnonymizedStr = anonymizeStmt(stmt.AST)
-
 	switch stmt.AST.(type) {
 	case *tree.AlterIndex, *tree.AlterTable, *tree.AlterSequence,
 		*tree.Analyze,
