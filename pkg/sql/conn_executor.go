@@ -1437,7 +1437,7 @@ func (ex *connExecutor) execCmd(ctx context.Context) error {
 				ex.implicitTxn(),
 			)
 			res = stmtRes
-			curStmt := Statement{Statement: tcmd.Statement}
+			curStmt := &Statement{Statement: tcmd.Statement}
 
 			stmtCtx := withStatement(ctx, ex.curStmt)
 			ev, payload, err = ex.execStmt(stmtCtx, curStmt, stmtRes, nil /* pinfo */)

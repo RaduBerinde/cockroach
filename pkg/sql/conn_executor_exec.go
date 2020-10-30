@@ -62,7 +62,7 @@ import (
 // pinfo: The values to use for the statement's placeholders. If nil is passed,
 // 	 then the statement cannot have any placeholder.
 func (ex *connExecutor) execStmt(
-	ctx context.Context, stmt Statement, res RestrictedCommandResult, pinfo *tree.PlaceholderInfo,
+	ctx context.Context, stmt *Statement, res RestrictedCommandResult, pinfo *tree.PlaceholderInfo,
 ) (fsm.Event, fsm.EventPayload, error) {
 	if log.V(2) || logStatementsExecuteEnabled.Get(&ex.server.cfg.Settings.SV) ||
 		log.HasSpanOrEvent(ctx) {
@@ -173,7 +173,7 @@ func (ex *connExecutor) execPortal(
 	stmtRes CommandResult,
 	pinfo *tree.PlaceholderInfo,
 ) (ev fsm.Event, payload fsm.EventPayload, err error) {
-	curStmt := Statement{
+	curStmt := &Statement{
 		Statement:     portal.Stmt.Statement,
 		Prepared:      portal.Stmt,
 		ExpectedTypes: portal.Stmt.Columns,
@@ -233,7 +233,7 @@ func (ex *connExecutor) execPortal(
 //
 // The returned event can be nil if no state transition is required.
 func (ex *connExecutor) execStmtInOpenState(
-	ctx context.Context, stmt Statement, res RestrictedCommandResult, pinfo *tree.PlaceholderInfo,
+	ctx context.Context, stmt *Statement, res RestrictedCommandResult, pinfo *tree.PlaceholderInfo,
 ) (retEv fsm.Event, retPayload fsm.EventPayload, retErr error) {
 	ex.incrementStartedStmtCounter(stmt)
 	defer func() {
@@ -632,7 +632,7 @@ func (ex *connExecutor) execStmtInOpenState(
 	}
 	p.extendedEvalCtx.Placeholders = &p.semaCtx.Placeholders
 	p.extendedEvalCtx.Annotations = &p.semaCtx.Annotations
-	p.stmt = &stmt
+	p.stmt = stmt
 	p.cancelChecker = cancelchecker.NewCancelChecker(ctx)
 	p.autoCommit = os.ImplicitTxn.Get() && !ex.server.cfg.TestingKnobs.DisableAutoCommit
 	if err := ex.dispatchToExecutionEngine(ctx, p, res); err != nil {
@@ -1065,7 +1065,7 @@ func (ex *connExecutor) beginTransactionTimestampsAndReadMode(
 // the cursor is not advanced. This means that the statement will run again in
 // stateOpen, at each point its results will also be flushed.
 func (ex *connExecutor) execStmtInNoTxnState(
-	ctx context.Context, stmt Statement,
+	ctx context.Context, stmt *Statement,
 ) (_ fsm.Event, payload fsm.EventPayload) {
 	switch s := stmt.AST.(type) {
 	case *tree.BeginTransaction:
@@ -1109,7 +1109,7 @@ func (ex *connExecutor) execStmtInNoTxnState(
 // - ROLLBACK TO SAVEPOINT / SAVEPOINT: reopens the current transaction,
 //   allowing it to be retried.
 func (ex *connExecutor) execStmtInAbortedState(
-	ctx context.Context, stmt Statement, res RestrictedCommandResult,
+	ctx context.Context, stmt *Statement, res RestrictedCommandResult,
 ) (_ fsm.Event, payload fsm.EventPayload) {
 	ex.incrementStartedStmtCounter(stmt)
 	defer func() {
@@ -1163,7 +1163,7 @@ func (ex *connExecutor) execStmtInAbortedState(
 // CommitWait.
 // Everything but COMMIT/ROLLBACK causes errors. ROLLBACK is treated like COMMIT.
 func (ex *connExecutor) execStmtInCommitWaitState(
-	stmt Statement, res RestrictedCommandResult,
+	stmt *Statement, res RestrictedCommandResult,
 ) (ev fsm.Event, payload fsm.EventPayload) {
 	ex.incrementStartedStmtCounter(stmt)
 	defer func() {
@@ -1190,7 +1190,7 @@ func (ex *connExecutor) execStmtInCommitWaitState(
 //
 // If an error is returned, the connection needs to stop processing queries.
 func (ex *connExecutor) runObserverStatement(
-	ctx context.Context, stmt Statement, res RestrictedCommandResult,
+	ctx context.Context, stmt *Statement, res RestrictedCommandResult,
 ) error {
 	switch sqlStmt := stmt.AST.(type) {
 	case *tree.ShowTransactionStatus:
@@ -1332,7 +1332,7 @@ func (ex *connExecutor) enableTracing(modes []string) error {
 // longer executing. NOTE(andrei): As of Feb 2018, "executing" does not imply
 // that the results have been delivered to the client.
 func (ex *connExecutor) addActiveQuery(
-	queryID ClusterWideID, stmt Statement, cancelFun context.CancelFunc,
+	queryID ClusterWideID, stmt *Statement, cancelFun context.CancelFunc,
 ) func() {
 
 	_, hidden := stmt.AST.(tree.HiddenFromShowQueries)
@@ -1400,13 +1400,13 @@ func (ex *connExecutor) handleAutoCommit(
 
 // incrementStartedStmtCounter increments the appropriate started
 // statement counter for stmt's type.
-func (ex *connExecutor) incrementStartedStmtCounter(stmt Statement) {
+func (ex *connExecutor) incrementStartedStmtCounter(stmt *Statement) {
 	ex.metrics.StartedStatementCounters.incrementCount(ex, stmt.AST)
 }
 
 // incrementExecutedStmtCounter increments the appropriate executed
 // statement counter for stmt's type.
-func (ex *connExecutor) incrementExecutedStmtCounter(stmt Statement) {
+func (ex *connExecutor) incrementExecutedStmtCounter(stmt *Statement) {
 	ex.metrics.ExecutedStatementCounters.incrementCount(ex, stmt.AST)
 }
 
