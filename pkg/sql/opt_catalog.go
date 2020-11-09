@@ -649,6 +649,15 @@ func newOptTable(
 		default:
 			kind = cat.DeleteOnly
 		}
+		if desc.Virtual {
+			if !desc.Internal {
+				return nil, errors.AssertionFailedf("virtual non-internal column")
+			}
+			if kind != cat.Ordinary {
+				return nil, errors.AssertionFailedf("virtual mutation column")
+			}
+			kind = cat.VirtualComputed
+		}
 
 		ot.columns[i].InitNonVirtual(
 			i,
