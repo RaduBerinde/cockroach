@@ -1,0 +1,24 @@
+# LogicTest: fakedist
+#!fakedist-spec-planning !local-spec-planning
+
+statement ok
+SET CLUSTER SETTING sql.testing.vectorize.batch_size = 2
+
+statement ok
+CREATE TABLE kv (k INT PRIMARY KEY, v INT, FAMILY (k, v))
+
+statement ok
+EXPLAIN ANALYZE (PLAN) SELECT k FROM kv WHERE k >= 2
+
+statement ok
+INSERT INTO kv VALUES (1,10), (2,20), (3,30), (4,40);
+
+statement ok
+EXPLAIN ANALYZE (PLAN) SELECT * FROM kv WHERE k >= 2
+
+statement ok
+CREATE TABLE ab (a INT PRIMARY KEY, b INT);
+INSERT INTO ab VALUES (10,100), (40,400), (50,500);
+
+statement ok
+EXPLAIN ANALYZE (PLAN, VERBOSE) SELECT * FROM kv JOIN ab ON v=a

@@ -13,6 +13,7 @@ package colexec
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/col/coldata"
@@ -67,6 +68,7 @@ type batchInfoCollector struct {
 	// childStatsCollectors contains the stats collectors for all of the inputs
 	// to the wrapped operator.
 	childStatsCollectors []ChildStatsCollector
+	finished             int32
 }
 
 var _ colexecbase.Operator = &batchInfoCollector{}
@@ -98,11 +100,15 @@ func (bic *batchInfoCollector) Next(ctx context.Context) coldata.Batch {
 		bic.numTuples += uint64(batch.Length())
 	}
 	bic.stopwatch.Stop()
+	if atomic.LoadInt32(&bic.finished) != 0 {
+		panic("boo!")
+	}
 	return batch
 }
 
 // finish calculates the final statistics.
 func (bic *batchInfoCollector) finish() (numBatches, numTuples uint64, time time.Duration) {
+	atomic.StoreInt32(&bic.finished, 1)
 	tm := bic.stopwatch.Elapsed()
 	// Subtract the time spent in each of the child stats collectors, to produce
 	// the amount of time that the wrapped operator spent doing work itself, not
