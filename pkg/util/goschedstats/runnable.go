@@ -11,7 +11,6 @@
 package goschedstats
 
 import (
-	"fmt"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -66,7 +65,6 @@ func init() {
 			t := <-ticker.C
 			if t.Sub(lastTime) > reportingPeriod || t.Before(lastTime) {
 				if numSamples > 0 {
-					fmt.Printf("avg runnable: %g\n", float64(sum)/float64(numSamples))
 					atomic.AddUint64(&total, uint64(sum*scale/numSamples))
 				}
 				lastTime = t
