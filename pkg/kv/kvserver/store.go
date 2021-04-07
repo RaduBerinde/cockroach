@@ -907,11 +907,11 @@ func NewStore(
 	s.systemConfigUpdateQueueRateLimiter = quotapool.NewRateLimiter(
 		"SystemConfigUpdateQueue",
 		quotapool.Limit(queueAdditionOnSystemConfigUpdateRate.Get(&cfg.Settings.SV)),
-		queueAdditionOnSystemConfigUpdateBurst.Get(&cfg.Settings.SV))
+		float64(queueAdditionOnSystemConfigUpdateBurst.Get(&cfg.Settings.SV)))
 	updateSystemConfigUpdateQueueLimits := func() {
 		s.systemConfigUpdateQueueRateLimiter.UpdateLimit(
 			quotapool.Limit(queueAdditionOnSystemConfigUpdateRate.Get(&cfg.Settings.SV)),
-			queueAdditionOnSystemConfigUpdateBurst.Get(&cfg.Settings.SV))
+			float64(queueAdditionOnSystemConfigUpdateBurst.Get(&cfg.Settings.SV)))
 	}
 	queueAdditionOnSystemConfigUpdateRate.SetOnChange(&cfg.Settings.SV,
 		updateSystemConfigUpdateQueueLimits)
@@ -1590,11 +1590,11 @@ func (s *Store) Start(ctx context.Context, stopper *stop.Stopper) error {
 	s.consistencyLimiter = quotapool.NewRateLimiter(
 		"ConsistencyQueue",
 		quotapool.Limit(consistencyCheckRate.Get(&s.ClusterSettings().SV)),
-		consistencyCheckRate.Get(&s.ClusterSettings().SV)*consistencyCheckRateBurstFactor,
+		float64(consistencyCheckRate.Get(&s.ClusterSettings().SV)*consistencyCheckRateBurstFactor),
 		quotapool.WithMinimumWait(consistencyCheckRateMinWait))
 
 	consistencyCheckRate.SetOnChange(&s.ClusterSettings().SV, func() {
-		rate := consistencyCheckRate.Get(&s.ClusterSettings().SV)
+		rate := float64(consistencyCheckRate.Get(&s.ClusterSettings().SV))
 		s.consistencyLimiter.UpdateLimit(quotapool.Limit(rate), rate*consistencyCheckRateBurstFactor)
 	})
 

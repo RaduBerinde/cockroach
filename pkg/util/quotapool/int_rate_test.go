@@ -42,7 +42,7 @@ func TestRateLimiterBasic(t *testing.T) {
 	// Set up some tools for the below scenarios.
 	var (
 		done   = make(chan struct{}, 1)
-		doWait = func(n int64) {
+		doWait = func(n float64) {
 			require.NoError(t, rl.WaitN(ctx, n))
 			done <- struct{}{}
 		}

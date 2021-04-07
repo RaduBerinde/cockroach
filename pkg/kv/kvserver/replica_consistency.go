@@ -579,7 +579,7 @@ func (r *Replica) sha512(
 
 	visitor := func(unsafeKey storage.MVCCKey, unsafeValue []byte) error {
 		// Rate Limit the scan through the range
-		if err := limiter.WaitN(ctx, int64(len(unsafeKey.Key)+len(unsafeValue))); err != nil {
+		if err := limiter.WaitN(ctx, float64(len(unsafeKey.Key)+len(unsafeValue))); err != nil {
 			return err
 		}
 
