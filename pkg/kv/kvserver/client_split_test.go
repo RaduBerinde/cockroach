@@ -2810,6 +2810,7 @@ func TestTxnWaitQueueDependencyCycleWithRangeSplit(t *testing.T) {
 
 func TestStoreCapacityAfterSplit(t *testing.T) {
 	defer leaktest.AfterTest(t)()
+	skip.WithIssue(t, 63612, "flaky test")
 	defer log.Scope(t).Close(t)
 
 	ctx := context.Background()
