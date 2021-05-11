@@ -175,7 +175,7 @@ func (s *windowPlanState) addRenderingOrProjection() error {
 				columns[i] = uint32(holder.outputColIdx)
 			}
 		}
-		s.plan.AddProjection(columns)
+		s.plan.AddProjection(columns, execinfrapb.Ordering{})
 		return nil
 	}
 
@@ -207,7 +207,7 @@ func (s *windowPlanState) addRenderingOrProjection() error {
 		outputType := renderExprs[i].ResolvedType()
 		renderTypes = append(renderTypes, outputType)
 	}
-	return s.plan.AddRendering(renderExprs, s.planCtx, s.plan.PlanToStreamColMap, renderTypes)
+	return s.plan.AddRendering(renderExprs, s.planCtx, s.plan.PlanToStreamColMap, renderTypes, execinfrapb.Ordering{})
 }
 
 // replaceWindowFuncsVisitor is used to populate render expressions containing

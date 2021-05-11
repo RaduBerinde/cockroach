@@ -298,7 +298,16 @@ func (ef *execFactory) ConstructSerializingProject(
 			return n, nil
 		}
 	}
-	return constructSimpleProjectForPlanNode(node, cols, colNames, nil /* reqOrdering */)
+	res, err := constructSimpleProjectForPlanNode(node, cols, colNames, nil /* reqOrdering */)
+	if err != nil {
+		return nil, err
+	}
+	// If we didn't actually need to project columns, or we pulled up a spoolNode,
+	// we don't need to materialize the ordering.
+	if r, ok := res.(*renderNode); ok {
+		r.serialize = true
+	}
+	return res, nil
 }
 
 // ConstructRender is part of the exec.Factory interface.
