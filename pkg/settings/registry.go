@@ -88,6 +88,12 @@ var retiredSettings = map[string]struct{}{
 	"kv.tenant_rate_limiter.read_bytes.burst_limit":     {},
 	"kv.tenant_rate_limiter.write_bytes.rate_limit":     {},
 	"kv.tenant_rate_limiter.write_bytes.burst_limit":    {},
+	// removed as of 21.1.?.
+	"kv.tenant_rate_limiter.read_request_cost":       {},
+	"kv.tenant_rate_limiter.read_cost_per_megabyte":  {},
+	"kv.tenant_rate_limiter.write_request_cost":      {},
+	"kv.tenant_rate_limiter.write_cost_per_megabyte": {},
+
 	// removed as of 21.2.
 	"sql.defaults.vectorize_row_count_threshold": {},
 	"cloudstorage.gs.default.key":                {},
