@@ -43,12 +43,17 @@ func init() {
 }
 
 // Connector mediates the communication of cluster-wide state to sandboxed
-// SQL-only tenant processes through a restricted interface. A Connector is
-// seeded with a set of one or more network addresses that reference existing KV
-// nodes in the cluster (or a load-balancer which fans out to some/all KV
-// nodes). On startup, it establishes contact with one of these nodes to learn
-// about the topology of the cluster and bootstrap the rest of SQL <-> KV
-// network communication.
+// SQL-only tenant processes through a restricted interface.
+//
+// A Connector is instantiated inside a tenant's SQL process and is seeded with
+// a set of one or more network addresses that reference existing KV nodes in
+// the host cluster (or a load-balancer which fans out to some/all KV nodes). On
+// startup, it establishes contact with one of these nodes to learn about the
+// topology of the cluster and bootstrap the rest of SQL <-> KV network
+// communication.
+//
+// The Connector communicates with the host cluster through the roachpb.Internal
+// API.
 //
 // See below for the Connector's roles.
 type Connector struct {
