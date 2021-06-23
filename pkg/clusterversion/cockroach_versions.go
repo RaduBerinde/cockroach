@@ -319,6 +319,8 @@ const (
 	ExpressionBasedIndexes
 	// DeleteDeprecatedNamespaceTableDescriptorMigration deletes the descriptor at ID=2.
 	DeleteDeprecatedNamespaceTableDescriptorMigration
+	// TenantUsageTable adds the system table for tracking tenant usage.
+	TenantUsageTable
 
 	// Step (1): Add new versions here.
 )
