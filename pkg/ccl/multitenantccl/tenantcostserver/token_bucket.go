@@ -14,7 +14,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/ccl/multitenantccl/tenantcostserver/tenanttokenbucket"
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/server"
 	"github.com/cockroachdb/cockroach/pkg/sql"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
@@ -23,20 +22,13 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func init() {
-	server.TokenBucketRequestImpl = TokenBucketRequest
-}
-
-// TokenBucketRequest implements the TokenBucket API of the roachpb.Internal
-// service. This code runs on the host cluster to service requests coming from
-// tenants (through the kvtenant.Connector)
-func TokenBucketRequest(
-	ctx context.Context, db *kv.DB, ex *sql.InternalExecutor, in *roachpb.TokenBucketRequest,
+// TokenBucketRequest is part of the multitenant.TenantUsageServer and
+// implements the TokenBucket API of the roachpb.Internal service. This code
+// runs on the host cluster to service requests coming from tenants (through the
+// kvtenant.Connector).
+func (s *instance) TokenBucketRequest(
+	ctx context.Context, tenantID roachpb.TenantID, in *roachpb.TokenBucketRequest,
 ) (*roachpb.TokenBucketResponse, error) {
-	tenantID, ok := roachpb.TenantFromContext(ctx)
-	if !ok {
-		return nil, errors.New("token bucket request with no tenant")
-	}
 	if tenantID == roachpb.SystemTenantID {
 		return nil, errors.New("token bucket request for system tenant")
 	}
@@ -45,8 +37,8 @@ func TokenBucketRequest(
 	}
 
 	result := &roachpb.TokenBucketResponse{}
-	if err := db.Txn(ctx, func(ctx context.Context, txn *kv.Txn) error {
-		state, err := readTenantUsageState(ctx, ex, txn, tenantID.ToUint64())
+	if err := s.db.Txn(ctx, func(ctx context.Context, txn *kv.Txn) error {
+		state, err := readTenantUsageState(ctx, s.executor, txn, tenantID)
 		if err != nil {
 			return err
 		}
@@ -62,7 +54,9 @@ func TokenBucketRequest(
 
 		*result = state.Bucket.Request(in, timeutil.Now())
 
-		if err := updateTenantUsageState(ctx, ex, txn, tenantID.ToUint64(), in.OperationID, state); err != nil {
+		if err := updateTenantUsageState(
+			ctx, s.executor, txn, tenantID, in.OperationID, state,
+		); err != nil {
 			return err
 		}
 
@@ -87,7 +81,7 @@ type tenantUsageState struct {
 // readCurrentBucketState reads the current (last) bucket state. The zero struct
 // is returned if the state is not yet initialized.
 func readTenantUsageState(
-	ctx context.Context, ex *sql.InternalExecutor, txn *kv.Txn, tenantID uint64,
+	ctx context.Context, ex *sql.InternalExecutor, txn *kv.Txn, tenantID roachpb.TenantID,
 ) (tenantUsageState, error) {
 	datums, err := ex.QueryRowEx(
 		ctx, "tenant-usage-select", txn,
@@ -101,7 +95,7 @@ func readTenantUsageState(
 			total_write_bytes,
 			total_sql_pod_cpu_seconds
 		 FROM system.tenant_usage WHERE tenant_id = $1 ORDER BY seq DESC LIMIT 1`,
-		tenantID,
+		tenantID.ToUint64(),
 	)
 	if err != nil {
 		return tenantUsageState{}, err
@@ -128,7 +122,7 @@ func updateTenantUsageState(
 	ctx context.Context,
 	ex *sql.InternalExecutor,
 	txn *kv.Txn,
-	tenantID uint64,
+	tenantID roachpb.TenantID,
 	operationID uuid.UUID,
 	newState tenantUsageState,
 ) error {
@@ -150,7 +144,7 @@ func updateTenantUsageState(
 				total_write_bytes,
 				total_sql_pod_cpu_seconds
 			 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-		tenantID,
+		tenantID.ToUint64(),
 		newState.Seq,
 		operationID.String(),
 		newState.Bucket.RUBurstLimit,

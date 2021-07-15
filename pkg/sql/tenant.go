@@ -426,25 +426,8 @@ func (p *planner) UpdateTenantResourceLimits(
 	if err := rejectIfSystemTenant(tenantID, op); err != nil {
 		return err
 	}
-	return UpdateTenantResourceLimitsImpl(
-		ctx, p.Txn(), p.ExecCfg().InternalExecutor,
-		tenantID, operationUUID, availableRU, refillRate, maxBurstRU, asOf, asOfConsumedRequestUnits,
+	return p.ExecCfg().TenantUsageServer.ReconfigureTokenBucket(
+		ctx, p.Txn(), roachpb.MakeTenantID(tenantID),
+		operationUUID, availableRU, refillRate, maxBurstRU, asOf, asOfConsumedRequestUnits,
 	)
-}
-
-// UpdateTenantResourceLimitsImpl is a hook for CCL code which implements tenant
-// resource limits.
-var UpdateTenantResourceLimitsImpl = func(
-	ctx context.Context,
-	txn *kv.Txn,
-	ex *InternalExecutor,
-	tenantID uint64,
-	operationUUID uuid.UUID,
-	availableRU float64,
-	refillRate float64,
-	maxBurstRU float64,
-	asOf time.Time,
-	asOfConsumedRequestUnits float64,
-) error {
-	return errors.Newf("tenant resource limits require a CCL binary")
 }

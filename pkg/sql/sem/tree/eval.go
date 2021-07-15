@@ -3313,7 +3313,7 @@ type TenantOperator interface {
 	GCTenant(ctx context.Context, tenantID uint64) error
 
 	// UpdateTenantResourceLimits reconfigures the tenant resource limits.
-	// See tenantcostserver.ReconfigureTokenBucket.
+	// See multitenant.TenantUsageServer for more details on the arguments.
 	UpdateTenantResourceLimits(
 		ctx context.Context,
 		tenantID uint64,
