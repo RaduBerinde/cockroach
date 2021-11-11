@@ -86,6 +86,10 @@ We propose splitting the cluster settings into four *classes*:
 
    Example: `tenant_cpu_usage_allowance`.
 
+   Open question: how necessary is this class? It would be nice to have
+   per-tenant control of the RU accounting and throttling subsystem; are there
+   other areas?
+
 4. Tenant
 
    These settings are per tenant and can be modified by the tenant (as well as
@@ -93,11 +97,31 @@ We propose splitting the cluster settings into four *classes*:
 
    Example: `sql.notices.enabled`.
 
-A note on the "threat model": the described restrictions assume that the SQL
-tenant process is not compromised. There is no way to prevent a compromised
-process from changing its own view of the cluster settings. However, even a
-compromised process should never be able to learn the values for the
-`System hidden` settings.
+
+#### A note on the threat model
+
+The described restrictions assume that the SQL tenant process is not
+compromised. There is no way to prevent a compromised process from changing its
+own view of the cluster settings. However, even a compromised process should
+never be able to learn the values for the `System hidden` settings. It's also
+worth considering how a compromised tenant process can influence future
+uncompromised processes.
+
+
+### SQL changes
+
+New statements (for the system tenant only):
+ - `SET TENANT <tenant> CLUSTER SETTING <setting> = <value>`
+ - `RESET TENANT <tenant> CLUSTER SETTING <setting>`
+ - `SHOW TENANT <tenant> CLUSTER SETTINGS <setting>`
+ - `SHOW TENANT <tenant> [ALL] CLUSTER SETTINGS`
+
+New semantics for existing statements for tenants:
+ - `SHOW CLUSTER SETTINGS` shows the `System visible`, `Tenant read-only`,
+   and `Tenant` settings.
+ - `SHOW ALL CLUSTER SETTINGS` shows all `System visible`, `Tenant read-only`,
+   and `Tenant` settings.
+ - `SET/RESET CLUSTER SETTING` can only be used with `Tenant` settings.
 
 ## Implementation notes
 
@@ -132,20 +156,40 @@ Class-specific notes:
 
 3. Tenant read-only
 
-   This class only requires adding checks to disallow changing values. We will
-   also disallow writing directly to the `system.settings` table; only internal
-   SQL code will be allowed to write to this table.
-   
-   Values for tenant settings live in each tenant's instance of the
-   `system.settings` table.
+   There are multiple possibilities here:
 
-   TODO: relying on effectively restricting parts of the tenant keyspace is not
-   very robust. Eg what if you add the relevant KV to a tenant backup and
-   restore it?
+     A. Host-side storage. We introduce a new `system.tenant_settings` in the
+        system tenant, keyed on `(tenant_id, setting_name)`. We use the same
+        mechanism as for 2 above to publish them to the tenants.
+        
+        Pros: Clean data separation; no way for (even a compromised) tenant
+              process to modify these settings.
 
-   An alternative approach previously suggested in #68406 would be to store
-   these settings on the host side (for all tenants, in a new system table).
-   However, this would be considerably more work.
+        Cons: More work and complexity: each KV node has to set up range feeds
+              for this table (either one range feed per tenant talking to that
+              node via the tenant connector, or a single range feed for the
+              entire tabler). Also, adding a system table would preclude this
+              change for being backported to 21.2.
+
+     B. Tenant-side storage. We continute to use the tenant's `system.settings`
+        table and add checks in the code to disallow changing values. We also
+        disallow writing directly to the `system.settings` table; only internal
+        SQL code will be allowed to write to this table.
+
+        Pros: Very little work.
+        Cons: This approach is fragile, becuse the tenant process can ultimately
+              write to this table. Backup/restore workflows can be problematic
+              (can you doctor the settings inside a backup to have different
+              settings?). Also, a compromised process can modify them and all
+              subsequent uncompromised processes will use the modified setting.
+
+     C. Tenant-side storage with host-side hash. This is a variation on 2, where
+        the host also stores a SHA of the current non-default setting values (or
+        a list of allowable SHAs). This can be stored in the existing
+        `system.tenants` table. The tenant code validates that the current
+        settings are accepted by the server.
+
+        This is a compromise between A and B in terms of Pros and Cons.
 
 4. Tenant
 
@@ -177,11 +221,11 @@ following guidelines:
 
 ## Rationale and Alternatives
 
-An alternative approach to implement `System visible` is to use the same
-infrastructure as for `Tenant read-only` settings. This has the advantage of not
-having to implement any new infrastructure, but it would complicate things on
-the host side - when changing any such setting, we would have to change the
-corresponding setting in each tenant.
+A minimal implementation approach would be to use the tenant-side storage
+solution for `Tenant read-only` and implement `System visible` in the same way.
+However this complicates things on the host side, where we need more
+infrastructure (and potentially operational overhead) to ensure that all tenant
+instances of system visible settings are in sync.
 
 # Explain it to folk outside of your team
 
