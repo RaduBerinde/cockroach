@@ -50,13 +50,13 @@ func TestGCTenant(t *testing.T) {
 	)
 	require.NoError(t, sql.CreateTenantRecord(
 		ctx, &execCfg, nil, /* txn */
-		&descpb.TenantInfoWithUsage{
+		&descpb.TenantMetadata{
 			TenantInfo: descpb.TenantInfo{ID: activeTenID},
 		}),
 	)
 	require.NoError(t, sql.CreateTenantRecord(
 		ctx, &execCfg, nil, /* txn */
-		&descpb.TenantInfoWithUsage{
+		&descpb.TenantMetadata{
 			TenantInfo: descpb.TenantInfo{ID: dropTenID, State: descpb.TenantInfo_DROP},
 		}),
 	)

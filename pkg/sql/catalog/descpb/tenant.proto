@@ -36,9 +36,10 @@ message TenantInfo {
   optional State state = 2 [(gogoproto.nullable) = false];
 }
 
-// TenantInfoAndUsage contains the information for a tenant in a multi-tenant
-// cluster plus metadata related to cost control and consumption.
-message TenantInfoWithUsage {
+// TenantMetadata contains all tenant metadata for a tenant in a multi-tenant cluster:
+//  - the tenant info
+//  - cost control and consumption metadata.
+message TenantMetadata {
   option (gogoproto.equal) = true;
 
   // Usage contains metadata related to cost control and consumption. In a

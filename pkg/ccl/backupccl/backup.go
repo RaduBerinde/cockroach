@@ -16,12 +16,12 @@ import (
 // GetTenants retrieves the tenant information from the manifest. It should be
 // used instead of Tenants to support older versions of the manifest which used
 // the deprecated field.
-func (m *BackupManifest) GetTenants() []descpb.TenantInfoWithUsage {
+func (m *BackupManifest) GetTenants() []descpb.TenantMetadata {
 	if len(m.Tenants) > 0 {
 		return m.Tenants
 	}
 	if len(m.TenantsDeprecated) > 0 {
-		res := make([]descpb.TenantInfoWithUsage, len(m.TenantsDeprecated))
+		res := make([]descpb.TenantMetadata, len(m.TenantsDeprecated))
 		for i := range res {
 			res[i].TenantInfo = m.TenantsDeprecated[i]
 		}

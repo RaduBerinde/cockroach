@@ -66,7 +66,7 @@ func rejectIfSystemTenant(tenID uint64, op string) error {
 // span config (in system.span_configurations) for it. It also initializes the
 // usage data in system.tenant_usage if info.Usage is set.
 func CreateTenantRecord(
-	ctx context.Context, execCfg *ExecutorConfig, txn *kv.Txn, info *descpb.TenantInfoWithUsage,
+	ctx context.Context, execCfg *ExecutorConfig, txn *kv.Txn, info *descpb.TenantMetadata,
 ) error {
 	const op = "create"
 	if err := rejectIfCantCoordinateMultiTenancy(execCfg.Codec, op); err != nil {
@@ -223,7 +223,7 @@ func updateTenantRecord(
 
 // CreateTenant implements the tree.TenantOperator interface.
 func (p *planner) CreateTenant(ctx context.Context, tenID uint64) error {
-	info := &descpb.TenantInfoWithUsage{
+	info := &descpb.TenantMetadata{
 		TenantInfo: descpb.TenantInfo{
 			ID: tenID,
 			// We synchronously initialize the tenant's keyspace below, so

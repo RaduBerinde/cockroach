@@ -272,7 +272,7 @@ func fullClusterTargets(
 
 func fullClusterTargetsRestore(
 	allDescs []catalog.Descriptor, lastBackupManifest BackupManifest,
-) ([]catalog.Descriptor, []catalog.DatabaseDescriptor, []descpb.TenantInfoWithUsage, error) {
+) ([]catalog.Descriptor, []catalog.DatabaseDescriptor, []descpb.TenantMetadata, error) {
 	fullClusterDescs, fullClusterDBs, err := fullClusterTargets(allDescs)
 	var filteredDescs []catalog.Descriptor
 	var filteredDBs []catalog.DatabaseDescriptor
@@ -333,7 +333,7 @@ func selectTargets(
 	targets tree.TargetList,
 	descriptorCoverage tree.DescriptorCoverage,
 	asOf hlc.Timestamp,
-) ([]catalog.Descriptor, []catalog.DatabaseDescriptor, []descpb.TenantInfoWithUsage, error) {
+) ([]catalog.Descriptor, []catalog.DatabaseDescriptor, []descpb.TenantMetadata, error) {
 	allDescs, lastBackupManifest := loadSQLDescsFromBackupsAtTime(backupManifests, asOf)
 
 	if descriptorCoverage == tree.AllDescriptors {
@@ -345,7 +345,7 @@ func selectTargets(
 			// TODO(dt): for now it is zero-or-one but when that changes, we should
 			// either keep it sorted or build a set here.
 			if tenant.ID == targets.Tenant.ToUint64() {
-				return nil, nil, []descpb.TenantInfoWithUsage{tenant}, nil
+				return nil, nil, []descpb.TenantMetadata{tenant}, nil
 			}
 		}
 		return nil, nil, nil, errors.Errorf("tenant %d not in backup", targets.Tenant.ToUint64())

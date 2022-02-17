@@ -266,7 +266,7 @@ message RestoreDetails {
   // cluster that backed up schemas are remapped to.
   repeated sqlbase.SchemaDescriptor schema_descs = 15;
   reserved 13;
-  repeated sqlbase.TenantInfoWithUsage tenants = 21 [(gogoproto.nullable) = false];
+  repeated sqlbase.TenantMetadata tenants = 21 [(gogoproto.nullable) = false];
 
   string override_db = 6 [(gogoproto.customname) = "OverrideDB"];
 

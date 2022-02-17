@@ -34,22 +34,22 @@ FROM
   LEFT JOIN system.tenant_usage ON
 	  tenants.id = tenant_usage.tenant_id AND tenant_usage.instance_id = 0`
 
-func tenantMetadataFromRow(row tree.Datums) (descpb.TenantInfoWithUsage, error) {
+func tenantMetadataFromRow(row tree.Datums) (descpb.TenantMetadata, error) {
 	if len(row) != 7 {
-		return descpb.TenantInfoWithUsage{}, errors.AssertionFailedf(
+		return descpb.TenantMetadata{}, errors.AssertionFailedf(
 			"unexpected row size %d from tenant metadata query", len(row),
 		)
 	}
 
 	id := uint64(tree.MustBeDInt(row[0]))
-	res := descpb.TenantInfoWithUsage{
+	res := descpb.TenantMetadata{
 		TenantInfo: descpb.TenantInfo{
 			ID: id,
 		},
 	}
 	infoBytes := []byte(tree.MustBeDBytes(row[2]))
 	if err := protoutil.Unmarshal(infoBytes, &res.TenantInfo); err != nil {
-		return descpb.TenantInfoWithUsage{}, err
+		return descpb.TenantMetadata{}, err
 	}
 	// If this tenant had no reported consumption and its token bucket was not
 	// configured, the tenant_usage values are all NULL.
@@ -61,7 +61,7 @@ func tenantMetadataFromRow(row tree.Datums) (descpb.TenantInfoWithUsage, error) 
 			return res, nil
 		}
 	}
-	res.Usage = &descpb.TenantInfoWithUsage_Usage{
+	res.Usage = &descpb.TenantMetadata_Usage{
 		RUBurstLimit: float64(tree.MustBeDFloat(row[3])),
 		RURefillRate: float64(tree.MustBeDFloat(row[4])),
 		RUCurrent:    float64(tree.MustBeDFloat(row[5])),
@@ -69,7 +69,7 @@ func tenantMetadataFromRow(row tree.Datums) (descpb.TenantInfoWithUsage, error) 
 	if row[6] != tree.DNull {
 		consumptionBytes := []byte(tree.MustBeDBytes(row[6]))
 		if err := protoutil.Unmarshal(consumptionBytes, &res.Usage.Consumption); err != nil {
-			return descpb.TenantInfoWithUsage{}, err
+			return descpb.TenantMetadata{}, err
 		}
 	}
 	return res, nil
@@ -77,19 +77,19 @@ func tenantMetadataFromRow(row tree.Datums) (descpb.TenantInfoWithUsage, error) 
 
 func retrieveSingleTenantMetadata(
 	ctx context.Context, ie *sql.InternalExecutor, txn *kv.Txn, tenantID roachpb.TenantID,
-) (descpb.TenantInfoWithUsage, error) {
+) (descpb.TenantMetadata, error) {
 	row, err := ie.QueryRow(
 		ctx, "backup-lookup-tenant", txn,
 		tenantMetadataQuery+` WHERE id = $1`, tenantID.ToUint64(),
 	)
 	if err != nil {
-		return descpb.TenantInfoWithUsage{}, err
+		return descpb.TenantMetadata{}, err
 	}
 	if row == nil {
-		return descpb.TenantInfoWithUsage{}, errors.Errorf("tenant %s does not exist", tenantID)
+		return descpb.TenantMetadata{}, errors.Errorf("tenant %s does not exist", tenantID)
 	}
 	if !tree.MustBeDBool(row[1]) {
-		return descpb.TenantInfoWithUsage{}, errors.Errorf("tenant %s is not active", tenantID)
+		return descpb.TenantMetadata{}, errors.Errorf("tenant %s is not active", tenantID)
 	}
 
 	return tenantMetadataFromRow(row)
@@ -97,7 +97,7 @@ func retrieveSingleTenantMetadata(
 
 func retrieveAllTenantsMetadata(
 	ctx context.Context, ie *sql.InternalExecutor, txn *kv.Txn,
-) ([]descpb.TenantInfoWithUsage, error) {
+) ([]descpb.TenantMetadata, error) {
 	rows, err := ie.QueryBuffered(
 		ctx, "backup-lookup-tenants", txn,
 		// XXX Should we add a `WHERE active`? We require the tenant to be active
@@ -107,7 +107,7 @@ func retrieveAllTenantsMetadata(
 	if err != nil {
 		return nil, err
 	}
-	res := make([]descpb.TenantInfoWithUsage, len(rows))
+	res := make([]descpb.TenantMetadata, len(rows))
 	for i := range rows {
 		res[i], err = tenantMetadataFromRow(rows[i])
 		if err != nil {

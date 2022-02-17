@@ -1534,7 +1534,7 @@ func getBackupDetailAndManifest(
 	}
 
 	var spans []roachpb.Span
-	var tenants []descpb.TenantInfoWithUsage
+	var tenants []descpb.TenantMetadata
 
 	if initialDetails.FullCluster && execCfg.Codec.ForSystemTenant() {
 		// Include all tenants.
