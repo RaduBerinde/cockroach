@@ -506,7 +506,8 @@ func (jr *joinReader) initJoinReaderStrategy(
 	neededRightCols util.FastIntSet,
 	readerType joinReaderType,
 ) error {
-	spanBuilder := span.MakeBuilder(flowCtx.EvalCtx, flowCtx.Codec(), jr.desc, jr.index)
+	var spanBuilder span.Builder
+	spanBuilder.Init(flowCtx.EvalCtx, flowCtx.Codec(), jr.desc, jr.index)
 	spanSplitter := span.MakeSplitter(jr.desc, jr.index, neededRightCols)
 
 	strategyMemAcc := jr.MemMonitor.MakeBoundAccount()
@@ -559,7 +560,8 @@ func (jr *joinReader) initJoinReaderStrategy(
 			generator = multiSpanGen
 		} else {
 			localityOptSpanGen := &localityOptimizedSpanGenerator{}
-			remoteSpanBuilder := span.MakeBuilder(flowCtx.EvalCtx, flowCtx.Codec(), jr.desc, jr.index)
+			var remoteSpanBuilder span.Builder
+			remoteSpanBuilder.Init(flowCtx.EvalCtx, flowCtx.Codec(), jr.desc, jr.index)
 			remoteSpanSplitter := span.MakeSplitter(jr.desc, jr.index, neededRightCols)
 			remoteSpanGenMemAcc := jr.MemMonitor.MakeBoundAccount()
 			if err := localityOptSpanGen.init(

@@ -100,7 +100,8 @@ func TestSpanAssembler(t *testing.T) {
 							oracleSource.Init(ctx)
 							converter := colconv.NewAllVecToDatumConverter(len(typs))
 
-							builder := span.MakeBuilder(&evalCtx, keys.TODOSQLCodec, testTable, testTable.GetPrimaryIndex())
+							var builder span.Builder
+							builder.Init(&evalCtx, keys.TODOSQLCodec, testTable, testTable.GetPrimaryIndex())
 							splitter := span.MakeSplitter(testTable, testTable.GetPrimaryIndex(), neededColumns)
 
 							colBuilder := NewColSpanAssembler(
@@ -169,7 +170,7 @@ func TestSpanAssembler(t *testing.T) {
 // pertains to index joins.
 func spanGeneratorOracle(
 	t *testing.T,
-	spanBuilder *span.Builder,
+	spanBuilder span.Builder,
 	spanSplitter span.Splitter,
 	rows []rowenc.EncDatumRow,
 	lookupCols int,

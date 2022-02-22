@@ -93,7 +93,7 @@ type insertFastPathFKCheck struct {
 	idx          catalog.Index
 	keyPrefix    []byte
 	colMap       catalog.TableColMap
-	spanBuilder  *span.Builder
+	spanBuilder  span.Builder
 	spanSplitter span.Splitter
 }
 
@@ -104,7 +104,7 @@ func (c *insertFastPathFKCheck) init(params runParams) error {
 
 	codec := params.ExecCfg().Codec
 	c.keyPrefix = rowenc.MakeIndexKeyPrefix(codec, c.tabDesc.GetID(), c.idx.GetID())
-	c.spanBuilder = span.MakeBuilder(params.EvalContext(), codec, c.tabDesc, c.idx)
+	c.spanBuilder.Init(params.EvalContext(), codec, c.tabDesc, c.idx)
 	c.spanSplitter = span.MakeSplitter(c.tabDesc, c.idx, util.FastIntSet{} /* neededColOrdinals */)
 
 	if len(c.InsertCols) > idx.numLaxKeyCols {
@@ -328,12 +328,6 @@ func (n *insertFastPathNode) BatchedValues(rowIdx int) tree.Datums { return n.ru
 
 func (n *insertFastPathNode) Close(ctx context.Context) {
 	n.run.ti.close(ctx)
-	for i := range n.run.fkChecks {
-		builder := n.run.fkChecks[i].spanBuilder
-		if builder != nil {
-			builder.Release()
-		}
-	}
 	*n = insertFastPathNode{}
 	insertFastPathNodePool.Put(n)
 }
