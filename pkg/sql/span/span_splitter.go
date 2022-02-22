@@ -17,6 +17,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/cockroachdb/errors"
 )
 
 // Splitter is a helper for splitting single-row spans into more specific spans
@@ -69,6 +70,13 @@ func MakeSplitter(
 
 	neededFamilies := rowenc.NeededColumnFamilyIDs(neededColOrdinals, table, index)
 
+	// Sanity check.
+	for i := range neededFamilies[1:] {
+		if neededFamilies[i] >= neededFamilies[i+1] {
+			panic(errors.AssertionFailedf("family IDs not increasing"))
+		}
+	}
+
 	// * The index either has just 1 family (so we'll make a GetRequest) or we
 	//   need fewer than every column family in the table (otherwise we'd just
 	//   make a big ScanRequest).
@@ -84,9 +92,39 @@ func MakeSplitter(
 	}
 }
 
+// MakeSplitterWithFamilyIDs creates a Splitter that splits spans that constrain
+// all key columns along the given family IDs.
+//
+// Returns NoopSplitter if familyIDs is empty.
+//
+// This should only be used when the conditions checked by MakeSplitter are
+// already known to be satisfied.
+func MakeSplitterWithFamilyIDs(numKeyColumns int, familyIDs []descpb.FamilyID) Splitter {
+	if len(familyIDs) == 0 {
+		return NoopSplitter()
+	}
+
+	// Sanity check.
+	for i := range familyIDs[1:] {
+		if familyIDs[i] >= familyIDs[i+1] {
+			panic(errors.AssertionFailedf("family IDs not increasing"))
+		}
+	}
+	return Splitter{
+		numKeyColumns:  numKeyColumns,
+		neededFamilies: familyIDs,
+	}
+}
+
 // IsNoop returns true if this instance will never split spans.
 func (s *Splitter) IsNoop() bool {
 	return s.numKeyColumns == 0
+}
+
+// FamilyIDs returns the family IDs into which spans will be split, or nil if
+// splitting is not possible.
+func (s *Splitter) FamilyIDs() []descpb.FamilyID {
+	return s.neededFamilies
 }
 
 // MaybeSplitSpanIntoSeparateFamilies uses the needed columns configured by
