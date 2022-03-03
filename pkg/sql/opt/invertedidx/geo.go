@@ -708,7 +708,7 @@ type geoDatumsToInvertedExpr struct {
 	evalCtx      *tree.EvalContext
 	colTypes     []*types.T
 	invertedExpr tree.TypedExpr
-	indexConfig  *geoindex.Config
+	indexConfig  geoindex.Config
 	typ          *types.T
 	getSpanExpr  getSpanExprForGeoIndexFn
 
@@ -746,9 +746,9 @@ func (g *geoDatumsToInvertedExpr) IndexedVarNodeFormatter(idx int) tree.NodeForm
 
 // NewGeoDatumsToInvertedExpr returns a new geoDatumsToInvertedExpr.
 func NewGeoDatumsToInvertedExpr(
-	evalCtx *tree.EvalContext, colTypes []*types.T, expr tree.TypedExpr, config *geoindex.Config,
+	evalCtx *tree.EvalContext, colTypes []*types.T, expr tree.TypedExpr, config geoindex.Config,
 ) (invertedexpr.DatumsToInvertedExpr, error) {
-	if geoindex.IsEmptyConfig(config) {
+	if config.IsEmpty() {
 		return nil, fmt.Errorf("inverted joins are currently only supported for geospatial indexes")
 	}
 
@@ -757,10 +757,10 @@ func NewGeoDatumsToInvertedExpr(
 		colTypes:    colTypes,
 		indexConfig: config,
 	}
-	if geoindex.IsGeographyConfig(config) {
+	if config.IsGeography() {
 		g.typ = types.Geography
 		g.getSpanExpr = getSpanExprForGeographyIndex
-	} else if geoindex.IsGeometryConfig(config) {
+	} else if config.IsGeometry() {
 		g.typ = types.Geometry
 		g.getSpanExpr = getSpanExprForGeometryIndex
 	} else {
@@ -810,7 +810,7 @@ func NewGeoDatumsToInvertedExpr(
 			// it for every row.
 			var invertedExpr inverted.Expression
 			if d, ok := nonIndexParam.(tree.Datum); ok {
-				invertedExpr = g.getSpanExpr(evalCtx.Ctx(), d, additionalParams, relationship, g.indexConfig)
+				invertedExpr = g.getSpanExpr(evalCtx.Ctx(), d, additionalParams, relationship, &g.indexConfig)
 			} else if funcExprCount == 1 {
 				// Currently pre-filtering is limited to a single FuncExpr.
 				preFilterRelationship = relationship
@@ -867,7 +867,7 @@ func (g *geoDatumsToInvertedExpr) Convert(
 			if g.filterer != nil {
 				preFilterState = g.filterer.Bind(d)
 			}
-			return g.getSpanExpr(ctx, d, t.additionalParams, t.relationship, g.indexConfig), nil
+			return g.getSpanExpr(ctx, d, t.additionalParams, t.relationship, &g.indexConfig), nil
 
 		default:
 			return nil, fmt.Errorf("unsupported expression %v", t)
