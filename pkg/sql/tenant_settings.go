@@ -14,8 +14,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/security"
 	"github.com/cockroachdb/cockroach/pkg/settings"
@@ -129,101 +127,46 @@ func (n *alterTenantSetClusterSettingNode) startExec(params runParams) error {
 		}
 	}
 
-	// Write the setting.
-	_, err := writeSettingInternal(
+	var reportedValue string
+	if n.value == nil {
+		reportedValue = "DEFAULT" // TODO: DEFAULT might be confusing, we really want to say "NO OVERRIDE"
+		if _, err := params.p.execCfg.InternalExecutor.ExecEx(
+			params.ctx, "reset-tenant-setting", params.p.Txn(),
+			sessiondata.InternalExecutorOverride{User: security.RootUserName()},
+			"DELETE FROM system.tenant_settings WHERE tenant_id = $1 AND name = $2", tenantID, n.name,
+		); err != nil {
+			return err
+		}
+	} else {
+		reportedValue = tree.AsStringWithFlags(n.value, tree.FmtBareStrings)
+		value, err := n.value.Eval(params.p.EvalContext())
+		if err != nil {
+			return err
+		}
+		encoded, err := toSettingString(params.ctx, n.st, n.name, n.setting, value)
+		if err != nil {
+			return err
+		}
+		if _, err := params.p.execCfg.InternalExecutor.ExecEx(
+			params.ctx, "update-tenant-setting", params.p.Txn(),
+			sessiondata.InternalExecutorOverride{User: security.RootUserName()},
+			`UPSERT INTO system.tenant_settings (tenant_id, name, value, last_updated, value_type) VALUES ($1, $2, $3, now(), $4)`,
+			tenantID, n.name, encoded, n.setting.Typ(),
+		); err != nil {
+			return err
+		}
+	}
+
+	// Finally, log the event.
+	return params.p.logEvent(
 		params.ctx,
-		&tenantSettingWriter{currentTxn: params.p.Txn(), tenantID: tenantID},
-		params.p.ExecCfg(),
-		n.setting, n.name,
-		params.p.User(),
-		n.st,
-		n.value,
-		params.p.EvalContext(),
-		false, /* forSystemTenant */
-		func(ctx context.Context, settingName, reportedValue string) error {
-			return params.p.logEvent(ctx,
-				0, /* no target */
-				&eventpb.SetTenantClusterSetting{
-					SettingName: settingName,
-					Value:       reportedValue,
-					TenantId:    tenantIDi,
-					AllTenants:  tenantIDi == 0,
-				})
-		},
-	)
-	return err
-}
-
-var _ settingWriter = (*tenantSettingWriter)(nil)
-
-// tenantSettingWriter is a settingWriter that writes to system.tenant_settings.
-type tenantSettingWriter struct {
-	currentTxn *kv.Txn
-	tenantID   tree.Datum
-}
-
-func (w *tenantSettingWriter) txn(
-	ctx context.Context, execCfg *ExecutorConfig, f func(ctx context.Context, txn *kv.Txn) error,
-) error {
-	return f(ctx, w.currentTxn)
-}
-
-func (w *tenantSettingWriter) versionUpgradeHook(
-	ctx context.Context,
-	execCfg *ExecutorConfig,
-	user security.SQLUsername,
-	from, to clusterversion.ClusterVersion,
-	updateSystemVersionSetting UpdateVersionSystemSettingHook,
-) error {
-	// See: https://github.com/cockroachdb/cockroach/issues/77733
-	// This is the place where we'd like to run the SQL migrations
-	// for the target tenant before writing the new value
-	// of the version setting via updateSystemVersionSetting().
-	return errors.AssertionFailedf("unimplemented")
-}
-
-func (w *tenantSettingWriter) deleteSetting(
-	ctx context.Context, execCfg *ExecutorConfig, txn *kv.Txn, name string,
-) error {
-	_, err := execCfg.InternalExecutor.ExecEx(
-		ctx, "reset-tenant-setting", txn,
-		sessiondata.InternalExecutorOverride{User: security.RootUserName()},
-		"DELETE FROM system.tenant_settings WHERE tenant_id = $1 AND name = $2", w.tenantID, name,
-	)
-	return err
-}
-
-func (w *tenantSettingWriter) getSetting(
-	ctx context.Context, execCfg *ExecutorConfig, txn *kv.Txn, name string,
-) ([]tree.Datum, error) {
-	return execCfg.InternalExecutor.QueryRowEx(
-		ctx, "retrieve-prev-tenant-setting", txn,
-		sessiondata.InternalExecutorOverride{User: security.RootUserName()},
-		"SELECT value FROM system.tenant_settings WHERE tenant_id = $1 AND name = $2", w.tenantID, name,
-	)
-}
-
-func (w *tenantSettingWriter) upsertSetting(
-	ctx context.Context, execCfg *ExecutorConfig, txn *kv.Txn, name string, encoded, typ string,
-) error {
-	_, err := execCfg.InternalExecutor.ExecEx(
-		ctx, "update-tenant-setting", txn,
-		sessiondata.InternalExecutorOverride{User: security.RootUserName()},
-		`UPSERT INTO system.tenant_settings (tenant_id, name, value, last_updated, value_type) VALUES ($1, $2, $3, now(), $4)`,
-		w.tenantID, name, encoded, typ,
-	)
-	return err
-}
-
-func (w *tenantSettingWriter) postChangeTestingNotify(
-	ctx context.Context,
-	execCfg *ExecutorConfig,
-	setting settings.NonMaskedSetting,
-	name string,
-	encoded string,
-) error {
-	// Nothing to do here for now.
-	return nil
+		0, /* no target */
+		&eventpb.SetTenantClusterSetting{
+			SettingName: n.name,
+			Value:       reportedValue,
+			TenantId:    tenantIDi,
+			AllTenants:  tenantIDi == 0,
+		})
 }
 
 func (n *alterTenantSetClusterSettingNode) Next(_ runParams) (bool, error) { return false, nil }
