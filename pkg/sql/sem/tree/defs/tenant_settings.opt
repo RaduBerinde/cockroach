@@ -1,0 +1,28 @@
+# AlterTenantSetClusterSetting represents an ALTER TENANT
+# SET CLUSTER SETTING statement.
+[Statement]
+define AlterTenantSetClusterSetting {
+    Name string
+    Value Expr
+
+    # TenantID is nil when TenantAll is true.
+    TenantID Expr
+    TenantAll bool
+}
+
+# ShowTenantClusterSetting represents a SHOW CLUSTER SETTING ... FOR TENANT
+# statement.
+[Statement]
+define ShowTenantClusterSetting {
+    Name string
+    TenantID Expr
+}
+
+# ShowTenantClusterSettingList represents a SHOW CLUSTER SETTINGS FOR TENANT
+# statement.
+[Statement]
+define ShowTenantClusterSettingList {
+    # All indicates whether to include non-public settings in the output.
+    All bool
+    TenantID Expr
+}

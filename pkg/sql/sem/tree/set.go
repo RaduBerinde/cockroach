@@ -19,15 +19,6 @@
 
 package tree
 
-// SetVar represents a SET or RESET statement.
-type SetVar struct {
-	Name     string
-	Local    bool
-	Values   Exprs
-	Reset    bool
-	ResetAll bool
-}
-
 // Format implements the NodeFormatter interface.
 func (node *SetVar) Format(ctx *FmtCtx) {
 	if node.ResetAll {
@@ -63,12 +54,6 @@ func (node *SetVar) Format(ctx *FmtCtx) {
 	}
 }
 
-// SetClusterSetting represents a SET CLUSTER SETTING statement.
-type SetClusterSetting struct {
-	Name  string
-	Value Expr
-}
-
 // Format implements the NodeFormatter interface.
 func (node *SetClusterSetting) Format(ctx *FmtCtx) {
 	ctx.WriteString("SET CLUSTER SETTING ")
@@ -91,41 +76,21 @@ func (node *SetClusterSetting) Format(ctx *FmtCtx) {
 	}
 }
 
-// SetTransaction represents a SET TRANSACTION statement.
-type SetTransaction struct {
-	Modes TransactionModes
-}
-
 // Format implements the NodeFormatter interface.
 func (node *SetTransaction) Format(ctx *FmtCtx) {
 	ctx.WriteString("SET TRANSACTION")
 	ctx.FormatNode(&node.Modes)
 }
 
-// SetSessionAuthorizationDefault represents a SET SESSION AUTHORIZATION DEFAULT
-// statement. This can be extended (and renamed) if we ever support names in the
-// last position.
-type SetSessionAuthorizationDefault struct{}
-
 // Format implements the NodeFormatter interface.
 func (node *SetSessionAuthorizationDefault) Format(ctx *FmtCtx) {
 	ctx.WriteString("SET SESSION AUTHORIZATION DEFAULT")
-}
-
-// SetSessionCharacteristics represents a SET SESSION CHARACTERISTICS AS TRANSACTION statement.
-type SetSessionCharacteristics struct {
-	Modes TransactionModes
 }
 
 // Format implements the NodeFormatter interface.
 func (node *SetSessionCharacteristics) Format(ctx *FmtCtx) {
 	ctx.WriteString("SET SESSION CHARACTERISTICS AS TRANSACTION")
 	ctx.FormatNode(&node.Modes)
-}
-
-// SetTracing represents a SET TRACING statement.
-type SetTracing struct {
-	Values Exprs
 }
 
 // Format implements the NodeFormatter interface.

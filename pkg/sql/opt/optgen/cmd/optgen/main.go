@@ -98,7 +98,7 @@ func (g *optgen) run(args ...string) bool {
 	case "ops":
 	case "rulenames":
 
-	case "execfactory", "execexplain", "execplangist":
+	case "execfactory", "execexplain", "execplangist", "treedefs", "treewalk":
 		runValidate = false
 
 	default:
@@ -192,6 +192,14 @@ func (g *optgen) run(args ...string) bool {
 
 	case "execplangist":
 		var gen execPlanGistGen
+		err = g.generate(compiled, gen.generate)
+
+	case "treedefs":
+		var gen treeDefsGen
+		err = g.generate(compiled, gen.generate)
+
+	case "treewalk":
+		var gen treeWalkGen
 		err = g.generate(compiled, gen.generate)
 	}
 

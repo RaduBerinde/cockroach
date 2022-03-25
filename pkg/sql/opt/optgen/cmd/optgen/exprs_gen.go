@@ -84,7 +84,6 @@ func (g *exprsGen) genExprDef(define *lang.DefineExpr) {
 	g.genExprGroupDef(define)
 }
 
-// genExprGroupDef generates the group struct definition for a relational
 // expression, plus its methods:
 //
 //   type selectGroup struct {

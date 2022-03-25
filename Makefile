@@ -896,6 +896,8 @@ OPTGEN_TARGETS = \
 	pkg/sql/opt/exec/factory.og.go \
 	pkg/sql/opt/exec/explain/explain_factory.og.go \
 	pkg/sql/opt/exec/explain/plan_gist_factory.og.go \
+	pkg/sql/sem/tree/defs.og.go \
+	pkg/sql/sem/tree/walk.og.go \
 
 # removed-files is a list of files that used to exist in the
 # repository that need to be explicitly cleaned up to prevent build
@@ -1640,6 +1642,7 @@ optgen-defs := pkg/sql/opt/ops/*.opt
 optgen-norm-rules := pkg/sql/opt/norm/rules/*.opt
 optgen-xform-rules := pkg/sql/opt/xform/rules/*.opt
 optgen-exec-defs := pkg/sql/opt/exec/factory.opt
+optgen-tree-defs := pkg/sql/sem/tree/defs/*.opt
 
 pkg/sql/opt/memo/expr.og.go: $(optgen-defs) bin/optgen
 	optgen -out $@ exprs $(optgen-defs)
@@ -1662,11 +1665,17 @@ pkg/sql/opt/norm/factory.og.go: $(optgen-defs) $(optgen-norm-rules) bin/optgen
 pkg/sql/opt/exec/factory.og.go: $(optgen-defs) $(optgen-exec-defs) bin/optgen
 	optgen -out $@ execfactory $(optgen-exec-defs)
 
-pkg/sql/opt/exec/explain/explain_factory.og.go: $(optgen-defs) $(optgen-exec-defs) bin/optgen
+pkg/sql/opt/exec/explain/explain_factory.og.go: $(optgen-exec-defs) bin/optgen
 	optgen -out $@ execexplain $(optgen-exec-defs)
 
-pkg/sql/opt/exec/explain/plan_gist_factory.og.go: $(optgen-defs) $(optgen-exec-defs) bin/optgen
+pkg/sql/opt/exec/explain/plan_gist_factory.og.go: $(optgen-exec-defs) bin/optgen
 	optgen -out $@ execplangist $(optgen-exec-defs)
+
+pkg/sql/sem/tree/defs.og.go: $(optgen-tree-defs) bin/optgen
+	optgen -out $@ treedefs $(optgen-tree-defs)
+
+pkg/sql/sem/tree/walk.og.go: $(optgen-tree-defs) bin/optgen
+	optgen -out $@ treewalk $(optgen-tree-defs)
 
 .PHONY: clean-c-deps
 clean-c-deps:

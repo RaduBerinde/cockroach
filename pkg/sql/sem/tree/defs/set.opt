@@ -1,0 +1,42 @@
+# SetVar represents a SET or RESET statement.
+[Statement]
+define SetVar {
+    Name string
+    Local bool
+    Values Exprs
+    Reset bool
+    ResetAll bool
+}
+
+# SetClusterSetting represents a SET CLUSTER SETTING statement.
+[Statement]
+define SetClusterSetting {
+    Name string
+    Value Expr
+}
+
+# SetTransaction represents a SET TRANSACTION statement.
+[Statement]
+define SetTransaction {
+    Modes TransactionModes
+}
+
+# SetSessionAuthorizationDefault represents a SET SESSION AUTHORIZATION DEFAULT
+# statement. This can be extended (and renamed) if we ever support names in the
+# last position.
+[Statement]
+define SetSessionAuthorizationDefault {
+}
+
+# SetSessionCharacteristics represents a SET SESSION CHARACTERISTICS AS
+# TRANSACTION statement.
+[Statement]
+define SetSessionCharacteristics {
+    Modes TransactionModes
+}
+
+# SetTracing represents a SET TRACING statement.
+[Statement]
+define SetTracing {
+    Values Exprs
+}
