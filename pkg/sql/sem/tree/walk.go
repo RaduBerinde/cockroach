@@ -880,11 +880,6 @@ func (n *ShowTenantClusterSetting) copyNode() *ShowTenantClusterSetting {
 // walkStmt is part of the walkableStmt interface.
 func (n *ShowTenantClusterSetting) walkStmt(v Visitor) Statement {
 	ret := n
-	sc, changed := walkStmt(v, n.ShowClusterSetting)
-	if changed {
-		ret = n.copyNode()
-		ret.ShowClusterSetting = sc.(*ShowClusterSetting)
-	}
 	if n.TenantID != nil {
 		e, changed := WalkExpr(v, n.TenantID)
 		if changed {
@@ -906,11 +901,6 @@ func (n *ShowTenantClusterSettingList) copyNode() *ShowTenantClusterSettingList 
 // walkStmt is part of the walkableStmt interface.
 func (n *ShowTenantClusterSettingList) walkStmt(v Visitor) Statement {
 	ret := n
-	sc, changed := walkStmt(v, n.ShowClusterSettingList)
-	if changed {
-		ret = n.copyNode()
-		ret.ShowClusterSettingList = sc.(*ShowClusterSettingList)
-	}
 	if n.TenantID != nil {
 		e, changed := WalkExpr(v, n.TenantID)
 		if changed {
