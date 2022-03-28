@@ -2850,7 +2850,7 @@ func ProcessPlaceholderAnnotations(
 		}
 	}
 
-	walkStmt(&v, stmt)
+	walkStatement(&v, stmt)
 	return v.err
 }
 

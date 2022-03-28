@@ -38,12 +38,10 @@ type Visitor interface {
 }
 
 // WalkExpr traverses the nodes in an expression.
-//
-// NOTE: Do not count on the walkStmt/WalkExpr machinery to visit all
-// expressions contained in a query. Only a sub-set of all expressions are
-// found by walkStmt and subsequently traversed. See the comment below on
-// walkStmt for details.
 func WalkExpr(v Visitor, expr Expr) (newExpr Expr, changed bool) {
+	if expr == nil {
+		return expr, false
+	}
 	recurse, newExpr := v.VisitPre(expr)
 
 	if recurse {
@@ -55,9 +53,22 @@ func WalkExpr(v Visitor, expr Expr) (newExpr Expr, changed bool) {
 	return newExpr, (reflect.ValueOf(expr) != reflect.ValueOf(newExpr))
 }
 
+func walkTypedExpr(v Visitor, d TypedExpr) (newTypedExpr TypedExpr, changed bool) {
+	if newExpr, changed := WalkExpr(v, d); changed {
+		return newExpr.(TypedExpr), true
+	}
+	return d, false
+}
+
+func walkDatum(v Visitor, d Datum) (newDatum Datum, changed bool) {
+	if newExpr, changed := WalkExpr(v, d); changed {
+		return newExpr.(Datum), true
+	}
+	return d, false
+}
+
 func walkTableExpr(v Visitor, expr TableExpr) (newExpr TableExpr, changed bool) {
-	newExpr = expr.WalkTableExpr(v)
-	return newExpr, (reflect.ValueOf(expr) != reflect.ValueOf(newExpr))
+	return expr.WalkTableExpr(v)
 }
 
 // WalkExprConst is a variant of WalkExpr for visitors that do not modify the expression.
@@ -73,24 +84,24 @@ func WalkExprConst(v Visitor, expr Expr) {
 // (i.e. can have child expressions or statements).
 type walkableStmt interface {
 	Statement
-	walkStmt(Visitor) Statement
+	walkStmt(Visitor) (_ Statement, changed bool)
 }
 
-// walkStmt walks the entire parsed stmt calling WalkExpr on each
-// expression, and replacing each expression with the one returned
-// by WalkExpr.
-//
-// NOTE: Beware that walkStmt does not necessarily traverse all parts of a
-// statement by itself. For example, it will not walk into Subquery nodes
-// within a FROM clause or into a JoinCond. Walk's logic is pretty
-// interdependent with the logic for constructing a query plan.
-func walkStmt(v Visitor, stmt Statement) (newStmt Statement, changed bool) {
+// walkStatement walks the entire parsed stmt calling WalkExpr on each
+// expression, and replacing each expression with the one returned by WalkExpr.
+func walkStatement(v Visitor, stmt Statement) (newStmt Statement, changed bool) {
 	walkable, ok := stmt.(walkableStmt)
 	if !ok {
 		return stmt, false
 	}
-	newStmt = walkable.walkStmt(v)
-	return newStmt, (stmt != newStmt)
+	return walkable.walkStmt(v)
+}
+
+func walkSelectStatement(v Visitor, stmt SelectStatement) (newStmt SelectStatement, changed bool) {
+	if newStmt, changed := walkStatement(v, stmt); changed {
+		return newStmt.(SelectStatement), true
+	}
+	return stmt, false
 }
 
 type simpleVisitor struct {
@@ -136,7 +147,7 @@ func SimpleVisit(expr Expr, preFn SimpleVisitFn) (Expr, error) {
 // for every node. The visitor stops as soon as an error is returned.
 func SimpleStmtVisit(stmt Statement, preFn SimpleVisitFn) (Statement, error) {
 	v := simpleVisitor{fn: preFn}
-	newStmt, changed := walkStmt(&v, stmt)
+	newStmt, changed := walkStatement(&v, stmt)
 	if changed {
 		return newStmt, nil
 	}
@@ -177,7 +188,7 @@ func ExprDebugString(expr Expr) string {
 // expressions that are part of the given statement.
 func StmtDebugString(stmt Statement) string {
 	v := debugVisitor{}
-	walkStmt(&v, stmt)
+	walkStatement(&v, stmt)
 	return v.buf.String()
 }
 

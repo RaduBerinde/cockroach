@@ -901,6 +901,9 @@ OPTGEN_TARGETS = \
 	pkg/sql/opt/exec/explain/explain_factory.og.go \
 	pkg/sql/opt/exec/explain/plan_gist_factory.og.go \
 
+TREEGEN_TARGETS = \
+	pkg/sql/sem/tree/walk.tg.go
+
 # removed-files is a list of files that used to exist in the
 # repository that need to be explicitly cleaned up to prevent build
 # failures.
@@ -972,7 +975,7 @@ BUILD_TAGGED_RELEASE =
 BUILDINFO_TAG :=
 
 $(go-targets): bin/.bootstrap $(BUILDINFO) $(CGO_FLAGS_FILES) $(PROTOBUF_TARGETS) $(LIBPROJ) $(GENERATED_TARGETS) $(CLEANUP_TARGETS)
-$(go-targets): $(LOG_TARGETS) $(SQLPARSER_TARGETS) $(OPTGEN_TARGETS)
+$(go-targets): $(LOG_TARGETS) $(SQLPARSER_TARGETS) $(OPTGEN_TARGETS) $(TREEGEN_TARGETS)
 $(go-targets): override LINKFLAGS += \
 	-X "github.com/cockroachdb/cockroach/pkg/build.tag=$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))" \
 	-X "github.com/cockroachdb/cockroach/pkg/build.rev=$(shell cat .buildinfo/rev)" \
@@ -1157,7 +1160,7 @@ dupl: bin/.bootstrap
 
 .PHONY: generate
 generate: ## Regenerate generated code.
-generate: protobuf $(DOCGEN_TARGETS) $(OPTGEN_TARGETS) $(LOG_TARGETS) $(SQLPARSER_TARGETS) $(SETTINGS_DOC_PAGES) $(SWAGGER_TARGETS) bin/langgen bin/terraformgen
+generate: protobuf $(DOCGEN_TARGETS) $(OPTGEN_TARGETS) $(TREEGEN_TARGETS) $(LOG_TARGETS) $(SQLPARSER_TARGETS) $(SETTINGS_DOC_PAGES) $(SWAGGER_TARGETS) bin/langgen bin/terraformgen
 	$(GO) generate $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' $(PKG)
 	$(MAKE) execgen
 
@@ -1210,6 +1213,7 @@ ARCHIVE_EXTRAS = \
 	$(BUILDINFO) \
 	$(SQLPARSER_TARGETS) \
 	$(OPTGEN_TARGETS) \
+	$(TREEGEN_TARGETS) \
 	pkg/ui/assets.ccl.installed pkg/ui/assets.oss.installed
 
 # TODO(benesch): Make this recipe use `git ls-files --recurse-submodules`
@@ -1673,6 +1677,12 @@ pkg/sql/opt/exec/explain/explain_factory.og.go: $(optgen-defs) $(optgen-exec-def
 pkg/sql/opt/exec/explain/plan_gist_factory.og.go: $(optgen-defs) $(optgen-exec-defs) bin/optgen
 	optgen -out $@ execplangist $(optgen-exec-defs)
 
+treegen-pkg-files := $(filter-out %.tg.go,$(wildcard pkg/sql/sem/tree/*.go))
+
+pkg/sql/sem/tree/walk.tg.go: $(treegen-pkg-files) bin/treegen
+	@echo 'treegen -out $@ <file list suppressed>'
+	@treegen -out $@ $(treegen-pkg-files)
+
 .PHONY: clean-c-deps
 clean-c-deps:
 	rm -rf $(JEMALLOC_DIR)
@@ -1706,9 +1716,9 @@ clean: cleanshort clean-c-deps
 	rm -rf artifacts bin
 
 .PHONY: maintainer-clean
-maintainer-clean: ## Like clean, but also remove some auto-generated SQL parser, optgen, and UI protos code.
+maintainer-clean: ## Like clean, but also remove some auto-generated SQL parser, optgen, treegen, and UI protos code.
 maintainer-clean: clean ui-maintainer-clean
-	rm -f $(SQLPARSER_TARGETS) $(LOG_TARGETS) $(OPTGEN_TARGETS) $(UI_PROTOS_OSS) $(UI_PROTOS_CCL)
+	rm -f $(SQLPARSER_TARGETS) $(LOG_TARGETS) $(OPTGEN_TARGETS) $(TREEGEN_TARGETS) $(UI_PROTOS_OSS) $(UI_PROTOS_CCL)
 
 .PHONY: unsafe-clean
 unsafe-clean: ## Like maintainer-clean, but also remove all untracked/ignored files.
@@ -1740,6 +1750,7 @@ bins = \
   bin/publish-provisional-artifacts \
   bin/optfmt \
   bin/optgen \
+  bin/treegen \
   bin/reduce \
   bin/returncheck \
   bin/roachvet \
@@ -1768,6 +1779,7 @@ execgen-package = ./pkg/sql/colexec/execgen/cmd/execgen
 langgen-package = ./pkg/sql/opt/optgen/cmd/langgen
 optfmt-package = ./pkg/sql/opt/optgen/cmd/optfmt
 optgen-package = ./pkg/sql/opt/optgen/cmd/optgen
+treegen-package = ./pkg/sql/sem/tree/cmd/treegen
 logictest-package = ./pkg/sql/logictest
 logictestccl-package = ./pkg/ccl/logictestccl
 logictestopt-package = ./pkg/sql/opt/exec/execbuilder
@@ -1779,7 +1791,7 @@ logictest-bins := bin/logictest bin/logictestopt bin/logictestccl
 # TODO(benesch): Derive this automatically. This is getting out of hand.
 bin/workload bin/docgen bin/execgen bin/roachtest bin/roachvet $(logictest-bins): $(SQLPARSER_TARGETS) $(LOG_TARGETS) $(PROTOBUF_TARGETS)
 bin/workload bin/docgen bin/roachtest $(logictest-bins): $(LIBPROJ) $(CGO_FLAGS_FILES)
-bin/roachtest $(logictest-bins): $(C_LIBS_CCL) $(CGO_FLAGS_FILES) $(OPTGEN_TARGETS) | $(C_LIBS_DYNAMIC)
+bin/roachtest $(logictest-bins): $(C_LIBS_CCL) $(CGO_FLAGS_FILES) $(OPTGEN_TARGETS) $(TREEGEN_TARGETS) | $(C_LIBS_DYNAMIC)
 
 PREREQS := GOFLAGS= bin/prereqs
 

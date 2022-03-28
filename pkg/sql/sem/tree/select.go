@@ -249,7 +249,7 @@ func (node *TableExprs) Format(ctx *FmtCtx) {
 type TableExpr interface {
 	NodeFormatter
 	tableExpr()
-	WalkTableExpr(Visitor) TableExpr
+	WalkTableExpr(Visitor) (_ TableExpr, changed bool)
 }
 
 func (*AliasedTableExpr) tableExpr() {}

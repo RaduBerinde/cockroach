@@ -989,9 +989,6 @@ func (node *TypedDummy) TypeCheck(context.Context, *SemaContext, *types.T) (Type
 	return node, nil
 }
 
-// Walk implements the Expr interface.
-func (node *TypedDummy) Walk(Visitor) Expr { return node }
-
 // binaryOpPrio follows the precedence order in the grammar. Used for pretty-printing.
 var binaryOpPrio = [...]int{
 	treebin.Pow:  1,

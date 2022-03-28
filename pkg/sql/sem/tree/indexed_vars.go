@@ -48,11 +48,6 @@ var _ TypedExpr = &IndexedVar{}
 // Variable is a dummy function part of the VariableExpr interface.
 func (*IndexedVar) Variable() {}
 
-// Walk is part of the Expr interface.
-func (v *IndexedVar) Walk(_ Visitor) Expr {
-	return v
-}
-
 // TypeCheck is part of the Expr interface.
 func (v *IndexedVar) TypeCheck(
 	_ context.Context, semaCtx *SemaContext, desired *types.T,
