@@ -5029,7 +5029,8 @@ alter_tenant_csetting_stmt:
   {
     csettingStmt := $4.stmt().(*tree.SetClusterSetting)
     $$.val = &tree.AlterTenantSetClusterSetting{
-      SetClusterSetting: *csettingStmt,
+      Name: csettingStmt.Name,
+      Value: csettingStmt.Value,
       TenantID: $3.expr(),
     }
   }
@@ -5037,8 +5038,10 @@ alter_tenant_csetting_stmt:
   {
     csettingStmt := $4.stmt().(*tree.SetClusterSetting)
     $$.val = &tree.AlterTenantSetClusterSetting{
-      SetClusterSetting: *csettingStmt,
+      Name: csettingStmt.Name,
+      Value: csettingStmt.Value,
       TenantAll: true,
+      TenantID: tree.DNull,
     }
   }
 | ALTER TENANT error // SHOW HELP: ALTER TENANT
@@ -5819,12 +5822,12 @@ show_local_or_tenant_csettings_stmt:
     switch t := $1.stmt().(type) {
     case *tree.ShowClusterSetting:
        $$.val = &tree.ShowTenantClusterSetting{
-          ShowClusterSetting: t,
+          Name: t.Name,
           TenantID: $4.expr(),
        }
     case *tree.ShowClusterSettingList:
        $$.val = &tree.ShowTenantClusterSettingList{
-          ShowClusterSettingList: t,
+          All: t.All,
           TenantID: $4.expr(),
        }
     }
