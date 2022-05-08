@@ -275,7 +275,7 @@ func showComments(
 
 		f.WriteString(";\n")
 		f.FormatNode(&tree.CommentOnColumn{
-			ColumnItem: &tree.ColumnItem{
+			ColumnItem: tree.ColumnItem{
 				TableName:  tn.ToUnresolvedObjectName(),
 				ColumnName: tree.Name(col.GetName()),
 			},
