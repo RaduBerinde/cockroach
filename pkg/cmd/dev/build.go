@@ -93,6 +93,7 @@ var buildTargetMapping = map[string]string{
 	"label-merged-pr":      "//pkg/cmd/label-merged-pr:label-merged-pr",
 	"geos":                 geosTarget,
 	"langgen":              "//pkg/sql/opt/optgen/cmd/langgen:langgen",
+	"lcov2json":            "//pkg/cmd/lcov2json:lcov2json",
 	"libgeos":              geosTarget,
 	"obsservice":           "//pkg/obsservice/cmd/obsservice:obsservice",
 	"optgen":               "//pkg/sql/opt/optgen/cmd/optgen:optgen",
