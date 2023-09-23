@@ -118,6 +118,7 @@ proto_library(
     strip_import_prefix = "/pkg",
     visibility = ["//visibility:public"],
     deps = [
+        "//google/api:api_proto",
         "//pkg/kv/kvserver/concurrency/lock:lock_proto",
         "//pkg/kv/kvserver/readsummary/rspb:rspb_proto",
         "//pkg/storage/enginepb:enginepb_proto",
@@ -128,7 +129,6 @@ proto_library(
         "@com_github_gogo_protobuf//gogoproto:gogo_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:timestamp_proto",
-        "@go_googleapis//google/api:annotations_proto",
     ],
 )
 

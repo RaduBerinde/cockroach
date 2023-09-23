@@ -17,6 +17,7 @@ proto_library(
     strip_import_prefix = "/pkg",
     visibility = ["//visibility:public"],
     deps = [
+        "//google/api:api_proto",
         "//pkg/build:build_proto",
         "//pkg/clusterversion:clusterversion_proto",
         "//pkg/config/zonepb:zonepb_proto",
@@ -42,7 +43,6 @@ proto_library(
         "@com_github_gogo_protobuf//gogoproto:gogo_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:timestamp_proto",
-        "@go_googleapis//google/api:annotations_proto",
         "@io_etcd_go_raft_v3//raftpb:raftpb_proto",
     ],
 )

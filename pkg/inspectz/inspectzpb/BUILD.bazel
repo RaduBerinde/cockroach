@@ -8,8 +8,8 @@ proto_library(
     strip_import_prefix = "/pkg",
     visibility = ["//visibility:public"],
     deps = [
+        "//google/api:api_proto",
         "//pkg/kv/kvserver/kvflowcontrol/kvflowinspectpb:kvflowinspectpb_proto",
-        "@go_googleapis//google/api:annotations_proto",
     ],
 )
 

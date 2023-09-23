@@ -19,9 +19,9 @@ proto_library(
     strip_import_prefix = "/pkg",
     visibility = ["//visibility:public"],
     deps = [
+        "//google/api:api_proto",
         "//pkg/roachpb:roachpb_proto",
         "@com_github_gogo_protobuf//gogoproto:gogo_proto",
-        "@go_googleapis//google/api:annotations_proto",
     ],
 )
 

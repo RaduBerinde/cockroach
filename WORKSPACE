@@ -42,9 +42,9 @@ http_archive(
 # repo.
 http_archive(
     name = "bazel_gazelle",
-    sha256 = "5982e5463f171da99e3bdaeff8c0f48283a7a5f396ec5282910b9e8a49c0dd7e",
+    sha256 = "29218f8e0cebe583643cbf93cae6f971be8a2484cdcfa1e45057658df8d54002",
     urls = [
-        "https://storage.googleapis.com/public-bazel-artifacts/bazel/bazel-gazelle-v0.25.0.tar.gz",
+        "https://storage.googleapis.com/public-bazel-artifacts/bazel/bazel-gazelle-v0.32.0.tar.gz",
     ],
 )
 
