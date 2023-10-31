@@ -273,7 +273,7 @@ func (s *initServer) ServeAndWait(
 			// Bootstrap() did its job. At this point, we know that the cluster
 			// version will be the bootstrap version (aka the binary version[1]),
 			// but the version setting does not know yet (it was initialized as
-			// BinaryMinSupportedVersion because the engines were all
+			// MinSupportedVersion because the engines were all
 			// uninitialized). Given that the bootstrap version was persisted to
 			// all the engines, it's now safe for us to bump the version setting
 			// itself and start operating at the latest cluster version.
@@ -521,7 +521,7 @@ func (s *initServer) attemptJoinTo(
 }
 
 // DiskClusterVersion returns the cluster version synthesized from disk. This
-// is always non-zero since it falls back to the BinaryMinSupportedVersion.
+// is always non-zero since it falls back to the MinSupportedVersion.
 func (s *initServer) DiskClusterVersion() clusterversion.ClusterVersion {
 	return s.inspectedDiskState.clusterVersion
 }
@@ -637,8 +637,8 @@ func newInitServerConfig(
 	cfg Config,
 	getDialOpts func(context.Context, string, rpc.ConnectionClass) ([]grpc.DialOption, error),
 ) initServerCfg {
-	binaryVersion := cfg.Settings.Version.BinaryVersion()
-	binaryMinSupportedVersion := cfg.Settings.Version.BinaryMinSupportedVersion()
+	binaryVersion := cfg.Settings.Version.LatestVersion()
+	binaryMinSupportedVersion := cfg.Settings.Version.MinSupportedVersion()
 	if knobs := cfg.TestingKnobs.Server; knobs != nil {
 		if overrideVersion := knobs.(*TestingKnobs).BinaryVersionOverride; overrideVersion != (roachpb.Version{}) {
 			// We are customizing the cluster version. We can only bootstrap a fresh

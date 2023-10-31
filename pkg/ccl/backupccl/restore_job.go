@@ -1937,7 +1937,7 @@ func (r *restoreResumer) validateJobIsResumable(execConfig *sql.ExecutorConfig) 
 	// the CreationClusterVersion may still be equal to binaryVersion,
 	// which means the cluster restore will proceed.
 	creationClusterVersion := r.job.Payload().CreationClusterVersion
-	binaryVersion := execConfig.Settings.Version.BinaryVersion()
+	binaryVersion := execConfig.Settings.Version.LatestVersion()
 	isClusterRestore := details.DescriptorCoverage == tree.AllDescriptors
 	if isClusterRestore && creationClusterVersion.Less(binaryVersion) {
 		return clusterRestoreDuringUpgradeErr(creationClusterVersion, binaryVersion)

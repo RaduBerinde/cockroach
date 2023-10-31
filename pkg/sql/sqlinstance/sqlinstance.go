@@ -50,7 +50,7 @@ func (ii InstanceInfo) GetLocality() roachpb.Locality {
 // SafeFormat implements redact.SafeFormatter.
 func (ii InstanceInfo) SafeFormat(s interfaces.SafePrinter, verb rune) {
 	s.Printf(
-		"Instance{RegionPrefix: %v, InstanceID: %d, SQLAddr: %v, RPCAddr: %v, SessionID: %s, Locality: %v, BinaryVersion: %v}",
+		"Instance{RegionPrefix: %v, InstanceID: %d, SQLAddr: %v, RPCAddr: %v, SessionID: %s, Locality: %v, LatestVersion: %v}",
 		redact.SafeString(base64.StdEncoding.EncodeToString(ii.Region)),
 		ii.InstanceID,
 		ii.InstanceSQLAddr,

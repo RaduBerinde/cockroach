@@ -66,7 +66,7 @@ import (
 //     running at cluster version 20.1 (which is necessary when a 20.1 cluster is
 //     upgraded to 20.2).
 //
-//     BinaryMinSupportedVersion                        BinaryVersion
+//     MinSupportedVersion                        LatestVersion
 //     |                                           |
 //     v...........................................v
 //     (possible range of active
