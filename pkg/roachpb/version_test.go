@@ -13,50 +13,64 @@ package roachpb
 import (
 	"testing"
 
-	"github.com/kr/pretty"
+	"github.com/stretchr/testify/require"
 )
 
-func TestVersionCmp(t *testing.T) {
-	v := func(major, minor, patch, internal int32) Version {
-		return Version{
-			Major:    major,
-			Minor:    minor,
-			Patch:    patch,
-			Internal: internal,
-		}
+func TestVersionStringRoundtrip(t *testing.T) {
+	versions := []Version{
+		{Major: 1, Minor: 2},
+		{Major: 2, Minor: 0, Patch: 3},
+		{Major: 1, Minor: 2, Patch: 2},
+		{Major: 24, Minor: 1},
+		{Major: 1, Minor: 2, Internal: 2},
+		{Major: 1, Minor: 2, Patch: 3, Internal: 15},
+		{Major: 24, Minor: 1, PreFinalizationUpgradeStep: 2},
+		{Major: 24, Minor: 2, Patch: 10, PreFinalizationUpgradeStep: 15},
 	}
-	testData := []struct {
-		v1, v2 Version
-		less   bool
-	}{
-		{v1: Version{}, v2: Version{}, less: false},
-		{v1: v(0, 0, 0, 0), v2: v(0, 0, 0, 1), less: true},
-		{v1: v(0, 0, 0, 2), v2: v(0, 0, 0, 1), less: false},
-		{v1: v(0, 0, 1, 0), v2: v(0, 0, 0, 1), less: false},
-		{v1: v(0, 0, 1, 0), v2: v(0, 0, 0, 2), less: false},
-		{v1: v(0, 0, 1, 1), v2: v(0, 0, 1, 1), less: false},
-		{v1: v(0, 0, 1, 0), v2: v(0, 0, 1, 1), less: true},
-		{v1: v(0, 1, 1, 0), v2: v(0, 1, 0, 1), less: false},
-		{v1: v(0, 1, 0, 1), v2: v(0, 1, 1, 0), less: true},
-		{v1: v(1, 0, 0, 0), v2: v(1, 1, 0, 0), less: true},
-		{v1: v(1, 1, 0, 1), v2: v(1, 1, 0, 0), less: false},
-		{v1: v(1, 1, 0, 1), v2: v(1, 2, 0, 0), less: true},
-		{v1: v(2, 1, 0, 0), v2: v(19, 1, 0, 0), less: true},
-		{v1: v(19, 1, 0, 0), v2: v(19, 2, 0, 0), less: true},
-		{v1: v(19, 2, 0, 0), v2: v(20, 1, 0, 0), less: true},
+	for _, v := range versions {
+		s := v.String()
+		v2, err := ParseVersion(s)
+		require.NoError(t, err)
+		require.Equal(t, v, v2)
 	}
+}
 
-	for _, test := range testData {
-		t.Run("", func(t *testing.T) {
-			if a, e := test.v1.Less(test.v2), test.less; a != e {
-				t.Errorf("expected %s < %s? %t; got %t", pretty.Sprint(test.v1), pretty.Sprint(test.v2), e, a)
-			}
-			if a, e := test.v1.Equal(test.v2), test.v1 == test.v2; a != e {
-				t.Errorf("expected %s = %s? %t; got %t", pretty.Sprint(test.v1), pretty.Sprint(test.v2), e, a)
-			}
-			if a, e := test.v1.AtLeast(test.v2), test.v1 == test.v2 || !test.less; a != e {
-				t.Errorf("expected %s >= %s? %t; got %t", pretty.Sprint(test.v1), pretty.Sprint(test.v2), e, a)
-			}
-		})
+func TestVersionCmp(t *testing.T) {
+	// We use an ordered list of versions and make sure that all pair-wise
+	// comparisons are as expected.
+	ordered := []string{
+		"0.0-pre.2",
+		"0.0-pre.4",
+		"0.0",
+		"0.0-1",
+		"0.0-15",
+		"0.0.1-pre.1",
+		"0.0.1-pre.2",
+		"0.0.1",
+		"0.0.1-15",
+		"2.0-pre.2",
+		"2.0-pre.4",
+		"2.0",
+		"2.0-2",
+		"2.0-4",
+		"23.2",
+		"24.1-pre.2",
+		"24.1-pre.4",
+		"24.1",
+		"24.2-pre.2",
+		"24.2-pre.4",
+		"24.2",
+	}
+	for i := 0; i < len(ordered); i++ {
+		for j := i + 1; j < len(ordered); j++ {
+			x := MustParseVersion(ordered[i])
+			y := MustParseVersion(ordered[j])
+			require.Equalf(t, -1, x.Cmp(y), "x: %s  y: %s", x, y)
+			require.Equalf(t, +1, y.Cmp(x), "x: %s  y: %s", x, y)
+			require.Truef(t, x.Less(y), "x: %s  y: %s", x, y)
+			require.Truef(t, x.LessEq(y), "x: %s  y: %s", x, y)
+			require.Truef(t, x.LessEq(x), "x: %s  y: %s", x, y)
+			require.Truef(t, y.AtLeast(x), "x: %s  y: %s", x, y)
+		}
 	}
 }

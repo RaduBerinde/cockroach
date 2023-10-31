@@ -600,7 +600,7 @@ var versionTable = [numKeys]roachpb.Version{
 	V23_2: {Major: 23, Minor: 2, Internal: 0},
 
 	// v24.1 versions. Internal versions must be even.
-	V24_1Start: {Major: 23, Minor: 2, Internal: 2},
+	V24_1Start: {Major: 24, Minor: 1, PreFinalizationUpgradeStep: 2},
 
 	// *************************************************
 	// Step (2): Add new versions here.

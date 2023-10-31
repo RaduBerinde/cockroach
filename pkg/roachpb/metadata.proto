@@ -457,6 +457,8 @@ message Version {
   // i.e. users of stable, public release will only use binaries with the
   // internal version set to 0.
   optional int32 internal = 4 [(gogoproto.nullable) = false];
+
+  optional int32 pre_finalization_upgrade_step = 5 [(gogoproto.nullable) = false];
 }
 
 // GCHint contains information that MVCC GC could use to optimize data deletion.
