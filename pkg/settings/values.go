@@ -14,6 +14,7 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/util/buildutil"
 	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
@@ -24,9 +25,7 @@ import (
 const MaxSettings = 1023
 
 // Values is a container that stores values for all registered settings.
-// Each setting is assigned a unique slot (up to MaxSettings).
-// Note that slot indices are 1-based (this is to trigger panics if an
-// uninitialized slot index is used).
+// Each setting is assigned a unique slotIdx.
 type Values struct {
 	container valuesContainer
 
@@ -46,9 +45,11 @@ type Values struct {
 		// lock, e.g. if we ever add RemoveOnChange or something.
 		onChange [MaxSettings][]func(ctx context.Context)
 	}
-	// opaque is an arbitrary object that can be set by a higher layer to make it
-	// accessible from certain callbacks (like state machine transformers).
-	opaque interface{}
+
+	// latestVersion and minSupportedVersion are the maximum and minimum allowable
+	// values for the version setting.
+	latestVersion       roachpb.Version
+	minSupportedVersion roachpb.Version
 }
 
 type classCheck uint32
@@ -142,10 +143,9 @@ var TestOpaque interface{} = testOpaqueType{}
 
 // Init must be called before using a Values instance; it initializes all
 // variables to their defaults.
-//
-// The opaque argument can be retrieved later via Opaque().
-func (sv *Values) Init(ctx context.Context, opaque interface{}) {
-	sv.opaque = opaque
+func (sv *Values) Init(ctx context.Context, latestVersion, minSupportedVersion roachpb.Version) {
+	sv.latestVersion = latestVersion
+	sv.minSupportedVersion = minSupportedVersion
 	for _, s := range registry {
 		s.setToDefault(ctx, sv)
 	}
@@ -186,9 +186,9 @@ func (sv *Values) SpecializedToVirtualCluster() bool {
 	return sv.classCheck.get() == classCheckVirtualCluster
 }
 
-// Opaque returns the argument passed to Init.
-func (sv *Values) Opaque() interface{} {
-	return sv.opaque
+// VersionHandle returns the VersionHandle for this container.
+func (sv *Values) VersionHandle() VersionHandle {
+	return VersionHandle{sv: sv}
 }
 
 func (sv *Values) settingChanged(ctx context.Context, slot slotIdx) {
@@ -286,8 +286,9 @@ func (sv *Values) TestingCopyForVirtualCluster(input *Values) {
 // TestingCopyForServer makes a copy of the input Values in the target Values
 // for use when initializing a server in a test cluster. This is meant to
 // propagate initial values and overrides.
-func (sv *Values) TestingCopyForServer(input *Values, newOpaque interface{}) {
-	sv.opaque = newOpaque
+func (sv *Values) TestingCopyForServer(input *Values) {
+	sv.latestVersion = input.latestVersion
+	sv.minSupportedVersion = input.minSupportedVersion
 	for slot := slotIdx(0); slot < slotIdx(len(registry)); slot++ {
 		// Copy the value.
 		sv.container.intVals[slot] = input.container.intVals[slot]

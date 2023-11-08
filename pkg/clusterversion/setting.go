@@ -10,17 +10,7 @@
 
 package clusterversion
 
-import (
-	"context"
-
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/errors"
-)
+/*
 
 // KeyVersionSetting is the "version" settings key.
 const KeyVersionSetting = "version"
@@ -223,25 +213,6 @@ func (cv *clusterVersionSetting) SettingsListDefault() string {
 	return Latest.Version().String()
 }
 
-func (cv *clusterVersionSetting) validateBinaryVersions(
-	ver roachpb.Version, sv *settings.Values,
-) error {
-	vh := sv.Opaque().(Handle)
-	if vh.MinSupportedVersion() == (roachpb.Version{}) {
-		panic("MinSupportedVersion not set")
-	}
-	if vh.LatestVersion().Less(ver) {
-		// TODO(tschottdorf): also ask gossip about other nodes.
-		return errors.Errorf("cannot upgrade to %s: node running %s",
-			ver, vh.LatestVersion())
-	}
-	if ver.Less(vh.MinSupportedVersion()) {
-		return errors.Errorf("node at %s cannot run %s (minimum version is %s)",
-			vh.LatestVersion(), ver, vh.MinSupportedVersion())
-	}
-	return nil
-}
-
 var PreserveDowngradeVersion = settings.RegisterStringSetting(
 	settings.ApplicationLevel,
 	"cluster.preserve_downgrade_option",
@@ -301,7 +272,7 @@ type Metrics struct {
 
 // MakeMetrics is a function that creates the metrics defined in the Metrics
 // struct.
-func MakeMetricsAndRegisterOnVersionChangeCallback(sv *settings.Values) Metrics {
+func MakeMetricsAndRegisternVersionChangeCallback(sv *settings.Values) Metrics {
 	gauge := metric.NewGauge(metaPreserveDowngradeLastUpdated)
 	RegisterOnVersionChangeCallback(sv, gauge)
 	return Metrics{
@@ -318,3 +289,5 @@ var AutoUpgradeEnabled = settings.RegisterBoolSetting(
 	settings.WithReportable(true),
 	settings.WithPublic,
 )
+
+*/

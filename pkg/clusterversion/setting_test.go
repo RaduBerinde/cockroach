@@ -10,18 +10,7 @@
 
 package clusterversion_test
 
-import (
-	"context"
-	"testing"
-
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/errors"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 func TestMakeMetricsAndRegisterOnVersionChangeCallback(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	ctx := context.Background()
@@ -60,13 +49,4 @@ func TestMakeMetricsAndRegisterOnVersionChangeCallback(t *testing.T) {
 		return nil
 	})
 }
-
-func BenchmarkClusterVersionSettingIsActive(b *testing.B) {
-	s := cluster.MakeTestingClusterSettings()
-	ctx := context.Background()
-	active := true
-	for i := 0; i < b.N; i++ {
-		active = s.Version.IsActive(ctx, clusterversion.Latest) && active
-	}
-	require.True(b, active)
-}
+*/

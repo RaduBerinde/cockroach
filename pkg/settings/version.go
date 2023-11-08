@@ -13,6 +13,12 @@ package settings
 import (
 	"context"
 	"fmt"
+
+	"github.com/cockroachdb/cockroach/pkg/clusterversion"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
+	"github.com/cockroachdb/errors"
 )
 
 // VersionSetting is the setting type that allows users to control the cluster
@@ -24,80 +30,139 @@ import (
 // VersionSetting itself is then just the tiny shim that lets us hook into the
 // rest of the settings machinery (by interfacing with Values, to load and store
 // cluster versions).
-//
-// TODO(irfansharif): If the cluster version is no longer backed by gossip,
-// maybe we should stop pretending it's a regular gossip-backed cluster setting.
-// We could introduce new syntax here to motivate this shift.
 type VersionSetting struct {
-	impl VersionSettingImpl
 	common
 }
 
-var _ Setting = &VersionSetting{}
+var _ NonMaskedSetting = &VersionSetting{}
 
-// VersionSettingImpl is the interface bridging pkg/settings and
-// pkg/clusterversion. See VersionSetting for additional commentary.
-type VersionSettingImpl interface {
-	// Decode takes in an encoded cluster version and returns it as the native
-	// type (the clusterVersion proto). Except it does it through the
-	// ClusterVersionImpl to avoid circular dependencies.
-	Decode(val []byte) (ClusterVersionImpl, error)
+// initialize initializes cluster version. Before this method has been called,
+// usage of the version is illegal and leads to a fatal error.
+func (v *VersionSetting) initialize(
+	ctx context.Context, version roachpb.Version, sv *Values,
+) error {
+	if ver := v.activeVersionOrEmpty(ctx, sv); ver != (clusterversion.ClusterVersion{}) {
+		// Allow initializing a second time as long as it's not regressing.
+		//
+		// This is useful in tests that use MakeTestingClusterSettings() which
+		// initializes the version, and the start a server which again
+		// initializes it once more.
+		//
+		// It's also used in production code during bootstrap, where the version
+		// is first initialized to MinSupportedVersion and then re-initialized to
+		// BootstrapVersion (=LatestVersion).
+		if version.Less(ver.Version) {
+			return errors.AssertionFailedf("cannot initialize version to %s because already set to: %s",
+				version, ver)
+		}
+		if version == ver.Version {
+			// Don't trigger callbacks, etc, a second time.
+			return nil
+		}
+		// Now version > ver.Version.
+	}
+	if err := validateBinaryVersions(version, sv); err != nil {
+		return err
+	}
 
-	// Validate checks whether an version update is permitted. It takes in the
-	// old and the proposed new value (both in encoded form). This is called by
-	// SET CLUSTER SETTING.
-	ValidateVersionUpgrade(ctx context.Context, sv *Values, oldV, newV []byte) error
-
-	// ValidateBinaryVersions is a subset of Validate. It only checks that the
-	// current binary supports the proposed version. This is called when the
-	// version is being communicated to us by a different node (currently
-	// through gossip).
-	//
-	// TODO(irfansharif): Update this comment when we stop relying on gossip to
-	// propagate version bumps.
-	ValidateBinaryVersions(ctx context.Context, sv *Values, newV []byte) error
-
-	// SettingsListDefault returns the value that should be presented by
-	// `./cockroach gen settings-list`
-	SettingsListDefault() string
+	// Return the serialized form of the new version.
+	newV := clusterversion.ClusterVersion{Version: version}
+	encoded, err := protoutil.Marshal(&newV)
+	if err != nil {
+		return err
+	}
+	v.setInternal(ctx, sv, encoded)
+	return nil
 }
 
-// ClusterVersionImpl is used to stub out the dependency on the clusterVersion
-// type (in pkg/clusterversion). The VersionSetting below is used to set
-// clusterVersion values, but we can't import the type directly due to the
-// cyclical dependency structure.
-type ClusterVersionImpl interface {
-	ClusterVersionImpl()
-	// We embed fmt.Stringer so to be able to later satisfy the `Setting`
-	// interface (which requires us to return a string representation of the
-	// current value of the setting)
-	fmt.Stringer
+// activeVersion returns the cluster's current active version: the minimum
+// cluster version the caller may assume is in effect.
+//
+// activeVersion fatals if the version has not been initialized.
+func (v *VersionSetting) activeVersion(
+	ctx context.Context, sv *Values,
+) clusterversion.ClusterVersion {
+	ver := v.activeVersionOrEmpty(ctx, sv)
+	if ver == (clusterversion.ClusterVersion{}) {
+		log.Fatalf(ctx, "version not initialized")
+	}
+	return ver
 }
 
-// MakeVersionSetting instantiates a version setting instance. See
-// VersionSetting for additional commentary.
-func MakeVersionSetting(impl VersionSettingImpl) VersionSetting {
-	return VersionSetting{impl: impl}
+// activeVersionOrEmpty is like activeVersion, but returns an empty version if
+// the active version was not initialized.
+func (v *VersionSetting) activeVersionOrEmpty(
+	ctx context.Context, sv *Values,
+) clusterversion.ClusterVersion {
+	encoded := v.getInternal(sv)
+	if encoded == nil {
+		return clusterversion.ClusterVersion{}
+	}
+	var curVer clusterversion.ClusterVersion
+	// NB: our linter requires using protoutil.Unmarshal here, but it causes an
+	// unnecessary allocation. This and other uses in this file are exceptions.
+	// TODO(pavelkalinnikov): don't parse proto on each time reading this setting.
+	if err := curVer.Unmarshal(encoded.([]byte)); err != nil {
+		log.Fatalf(ctx, "%v", err)
+	}
+	return curVer
 }
 
-// Decode takes in an encoded cluster version and returns it as the native
-// type (the clusterVersion proto). Except it does it through the
-// ClusterVersionImpl to avoid circular dependencies.
-func (v *VersionSetting) Decode(val []byte) (ClusterVersionImpl, error) {
-	return v.impl.Decode(val)
-}
-
-// Validate checks whether an version update is permitted. It takes in the
+// Validate checks whether a version update is permitted. It takes in the
 // old and the proposed new value (both in encoded form). This is called by
 // SET CLUSTER SETTING.
 func (v *VersionSetting) Validate(ctx context.Context, sv *Values, oldV, newV []byte) error {
-	return v.impl.ValidateVersionUpgrade(ctx, sv, oldV, newV)
+	newCV, err := clusterversion.Decode(oldV)
+	if err != nil {
+		return err
+	}
+
+	if err := validateBinaryVersions(newCV.Version, sv); err != nil {
+		return err
+	}
+
+	oldCV, err := clusterversion.Decode(newV)
+	if err != nil {
+		return err
+	}
+
+	// Versions cannot be downgraded.
+	if newCV.Version.Less(oldCV.Version) {
+		return errors.Errorf(
+			"versions cannot be downgraded (attempting to downgrade from %s to %s)",
+			oldCV.Version, newCV.Version)
+	}
+
+	// Prevent cluster version upgrade until cluster.preserve_downgrade_option
+	// is reset.
+	if downgrade := PreserveDowngradeVersion.Get(sv); downgrade != "" {
+		return errors.Errorf(
+			"cannot upgrade to %s: cluster.preserve_downgrade_option is set to %s",
+			newCV.Version, downgrade)
+	}
+
+	return nil
+}
+
+func validateBinaryVersions(ver roachpb.Version, sv *Values) error {
+	if sv.minSupportedVersion == (roachpb.Version{}) {
+		panic("MinSupportedVersion not set")
+	}
+	if sv.latestVersion.Less(ver) {
+		return errors.Errorf("cannot upgrade to %s: node running %s",
+			ver, sv.latestVersion)
+	}
+	if ver.Less(sv.minSupportedVersion) {
+		return errors.Errorf("node at %s cannot run %s (minimum version is %s)",
+			sv.latestVersion, ver, sv.minSupportedVersion)
+	}
+	return nil
 }
 
 // SettingsListDefault returns the value that should be presented by
 // `./cockroach gen settings-list`.
 func (v *VersionSetting) SettingsListDefault() string {
-	return v.impl.SettingsListDefault()
+	return clusterversion.Latest.Version().String()
 }
 
 // Typ is part of the Setting interface.
@@ -116,7 +181,7 @@ func (v *VersionSetting) String(sv *Values) string {
 	if encV == nil {
 		panic("unexpected nil value")
 	}
-	cv, err := v.impl.Decode(encV)
+	cv, err := clusterversion.Decode(encV)
 	if err != nil {
 		panic(err)
 	}
@@ -140,7 +205,7 @@ func (v *VersionSetting) DecodeToString(encoded string) (string, error) {
 	if encoded == encodedDefaultVersion {
 		return encodedDefaultVersion, nil
 	}
-	cv, err := v.impl.Decode([]byte(encoded))
+	cv, err := clusterversion.Decode([]byte(encoded))
 	if err != nil {
 		return "", err
 	}
@@ -149,25 +214,21 @@ func (v *VersionSetting) DecodeToString(encoded string) (string, error) {
 
 // Get retrieves the encoded value (in string form) in the setting. It panics if
 // set() has not been previously called.
-//
-// TODO(irfansharif): This (along with `set`) below should be folded into one of
-// the Setting interfaces, or be removed entirely. All readable settings
-// implement it.
 func (v *VersionSetting) Get(sv *Values) string {
-	encV := v.GetInternal(sv)
+	encV := v.getInternal(sv)
 	if encV == nil {
 		panic(fmt.Sprintf("missing value for version setting in slot %d", v.slot))
 	}
 	return string(encV.([]byte))
 }
 
-// GetInternal returns the setting's current value.
-func (v *VersionSetting) GetInternal(sv *Values) interface{} {
+// getInternal returns the setting's current value.
+func (v *VersionSetting) getInternal(sv *Values) interface{} {
 	return sv.getGeneric(v.slot)
 }
 
-// SetInternal updates the setting's value in the provided Values container.
-func (v *VersionSetting) SetInternal(ctx context.Context, sv *Values, newVal interface{}) {
+// setInternal updates the setting's value in the provided Values container.
+func (v *VersionSetting) setInternal(ctx context.Context, sv *Values, newVal interface{}) {
 	sv.setGeneric(ctx, v.slot, newVal)
 }
 
@@ -179,8 +240,45 @@ func (v *VersionSetting) setToDefault(ctx context.Context, sv *Values) {}
 // RegisterVersionSetting adds the provided version setting to the global
 // registry.
 func RegisterVersionSetting(
-	class Class, key InternalKey, desc string, setting *VersionSetting, opts ...SettingOption,
-) {
+	class Class, key InternalKey, desc string, opts ...SettingOption,
+) *VersionSetting {
+	setting := &VersionSetting{}
 	register(class, key, desc, setting)
 	setting.apply(opts)
+	return setting
 }
+
+var Version = RegisterVersionSetting(
+	ApplicationLevel,
+	"version",
+	"set the active cluster version in the format '<major>.<minor>'", // hide optional `-<internal>,
+	WithPublic,
+	WithReportable(true),
+)
+
+var PreserveDowngradeVersion = RegisterStringSetting(
+	ApplicationLevel,
+	"cluster.preserve_downgrade_option",
+	"disable (automatic or manual) cluster version upgrade from the specified version until reset",
+	"",
+	WithValidateString(func(sv *Values, s string) error {
+		if sv == nil || s == "" {
+			return nil
+		}
+		clusterVersion := Version.activeVersion(context.TODO(), sv).Version
+		downgradeVersion, err := roachpb.ParseVersion(s)
+		if err != nil {
+			return err
+		}
+
+		// cluster.preserve_downgrade_option can only be set to the current cluster version.
+		if downgradeVersion != clusterVersion {
+			return errors.Errorf(
+				"cannot set cluster.preserve_downgrade_option to %s (cluster version is %s)",
+				s, clusterVersion)
+		}
+		return nil
+	}),
+	WithReportable(true),
+	WithPublic,
+)

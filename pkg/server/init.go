@@ -25,7 +25,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/rpc"
 	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
+	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/bootstrap"
 	"github.com/cockroachdb/cockroach/pkg/storage"
 	"github.com/cockroachdb/cockroach/pkg/util"
@@ -218,7 +218,7 @@ type joinResult struct {
 // functionally equivalent to one that restarted; any decisions should be made
 // on persisted data instead of this flag.
 func (s *initServer) ServeAndWait(
-	ctx context.Context, stopper *stop.Stopper, sv *settings.Values,
+	ctx context.Context, stopper *stop.Stopper, st *cluster.Settings,
 ) (state *initState, initialBoot bool, err error) {
 	// If we're restarting an already bootstrapped node, return early.
 	if s.inspectedDiskState.bootstrapped() {
@@ -286,7 +286,7 @@ func (s *initServer) ServeAndWait(
 			//
 			// [1]: See the top-level comment in pkg/clusterversion to make
 			// sense of the many versions of ...versions.
-			if err := clusterversion.Initialize(ctx, state.clusterVersion.Version, sv); err != nil {
+			if err := st.Version().Initialize(ctx, state.clusterVersion.Version); err != nil {
 				return nil, false, err
 			}
 
@@ -637,8 +637,8 @@ func newInitServerConfig(
 	cfg Config,
 	getDialOpts func(context.Context, string, rpc.ConnectionClass) ([]grpc.DialOption, error),
 ) initServerCfg {
-	latestVersion := cfg.Settings.Version.LatestVersion()
-	minSupportedVersion := cfg.Settings.Version.MinSupportedVersion()
+	latestVersion := cfg.Settings.Version().LatestVersion()
+	minSupportedVersion := cfg.Settings.Version().MinSupportedVersion()
 	if knobs := cfg.TestingKnobs.Server; knobs != nil {
 		if overrideVersion := knobs.(*TestingKnobs).BinaryVersionOverride; overrideVersion != (roachpb.Version{}) {
 			// We are customizing the cluster version. We can only bootstrap a fresh

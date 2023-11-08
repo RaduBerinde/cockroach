@@ -25,7 +25,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/blobs"
 	"github.com/cockroachdb/cockroach/pkg/blobs/blobspb"
 	"github.com/cockroachdb/cockroach/pkg/build"
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
 	"github.com/cockroachdb/cockroach/pkg/gossip"
 	"github.com/cockroachdb/cockroach/pkg/inspectz"
 	"github.com/cockroachdb/cockroach/pkg/jobs"
@@ -1484,8 +1483,8 @@ func (s *topLevelServer) PreStart(ctx context.Context) error {
 		inspectedDiskState, err := inspectEngines(
 			ctx,
 			s.engines,
-			s.cfg.Settings.Version.LatestVersion(),
-			s.cfg.Settings.Version.MinSupportedVersion(),
+			s.cfg.Settings.Version().LatestVersion(),
+			s.cfg.Settings.Version().MinSupportedVersion(),
 		)
 		if err != nil {
 			return err
@@ -1522,7 +1521,7 @@ func (s *topLevelServer) PreStart(ctx context.Context) error {
 		// or join an existing cluster, so we have to conservatively go with the
 		// version from disk. If there are no initialized engines, this is the
 		// binary min supported version.
-		if err := clusterversion.Initialize(ctx, initialDiskClusterVersion.Version, &s.cfg.Settings.SV); err != nil {
+		if err := s.cfg.Settings.Version().Initialize(ctx, initialDiskClusterVersion.Version); err != nil {
 			return err
 		}
 
@@ -1686,7 +1685,7 @@ func (s *topLevelServer) PreStart(ctx context.Context) error {
 	// incoming connections.
 	startRPCServer(workersCtx)
 	onInitServerReady()
-	state, initialStart, err := initServer.ServeAndWait(workersCtx, s.stopper, &s.cfg.Settings.SV)
+	state, initialStart, err := initServer.ServeAndWait(workersCtx, s.stopper, s.cfg.Settings)
 	if err != nil {
 		return errors.Wrap(err, "during init")
 	}
@@ -1722,7 +1721,7 @@ func (s *topLevelServer) PreStart(ctx context.Context) error {
 			return err
 		}
 
-		if err := s.ClusterSettings().Version.SetActiveVersion(ctx, state.clusterVersion); err != nil {
+		if err := s.ClusterSettings().Version().SetActiveVersion(ctx, state.clusterVersion); err != nil {
 			return err
 		}
 	}

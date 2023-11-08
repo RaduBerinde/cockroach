@@ -41,14 +41,13 @@
 package clusterversion
 
 import (
-	"context"
-
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
+	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )
 
+/*
 // Initialize initializes the global cluster version. Before this method has
 // been called, usage of the cluster version (through Handle) is illegal and
 // leads to a fatal error.
@@ -250,6 +249,8 @@ func (v *handleImpl) MinSupportedVersion() roachpb.Version {
 	return v.minSupportedVersion
 }
 
+*/
+
 // IsActiveVersion returns true if the features of the supplied version are
 // active at the running version.
 func (cv ClusterVersion) IsActiveVersion(v roachpb.Version) bool {
@@ -272,10 +273,31 @@ func (cv ClusterVersion) SafeFormat(p redact.SafePrinter, _ rune) {
 	p.Print(cv.Version)
 }
 
+// Encode the cluster version (using the protobuf encoding).
+func (cv ClusterVersion) Encode() []byte {
+	encoded, err := protoutil.Marshal(&cv)
+	if err != nil {
+		// Marshal should never fail.
+		panic(errors.NewAssertionErrorWithWrappedErrf(err, "error marshalling version"))
+	}
+	return encoded
+}
+
+// Decode a cluster version that was encoded using Encode.
+func Decode(encoded []byte) (ClusterVersion, error) {
+	var cv ClusterVersion
+	if err := protoutil.Unmarshal(encoded, &cv); err != nil {
+		return ClusterVersion{}, err
+	}
+	return cv, nil
+}
+
+/*
 // ClusterVersionImpl implements the settings.ClusterVersionImpl interface.
 func (cv ClusterVersion) ClusterVersionImpl() {}
 
 var _ settings.ClusterVersionImpl = ClusterVersion{}
+*/
 
 // EncodingFromVersionStr is a shorthand to generate an encoded cluster version
 // from a version string.
