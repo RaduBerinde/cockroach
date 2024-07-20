@@ -2672,7 +2672,8 @@ func mvccPutInternal(
 	versionValue.ImportEpoch = opts.ImportEpoch
 	versionValue.OriginID = opts.OriginID
 	if opts.OriginTimestamp.IsSet() {
-		versionValue.OriginTimestamp = opts.OriginTimestamp
+		versionValue.OriginTimestampWall = opts.OriginTimestamp.WallTime
+		versionValue.OriginTimestampLogical = opts.OriginTimestamp.Logical
 	}
 
 	if buildutil.CrdbTestBuild {

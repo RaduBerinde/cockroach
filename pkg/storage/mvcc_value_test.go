@@ -131,13 +131,14 @@ func TestMVCCValueFormat(t *testing.T) {
 	valHeaderFull := valHeader
 	valHeaderFull.ImportEpoch = importEpoch
 	valHeaderFull.OriginID = originID
-	valHeaderFull.OriginTimestamp = originTs
+	valHeaderFull.OriginTimestampWall = originTs.WallTime
+	valHeaderFull.OriginTimestampLogical = originTs.Logical
 
 	valHeaderWithJobIDOnly := enginepb.MVCCValueHeader{ImportEpoch: importEpoch}
 
 	valHeaderWithOriginIDOnly := enginepb.MVCCValueHeader{OriginID: originID}
 
-	valHeaderWithOriginTsOnly := enginepb.MVCCValueHeader{OriginTimestamp: originTs}
+	valHeaderWithOriginTsOnly := enginepb.MVCCValueHeader{OriginTimestampWall: originTs.WallTime, OriginTimestampLogical: originTs.Logical}
 
 	testcases := map[string]struct {
 		val    MVCCValue
@@ -186,11 +187,12 @@ func TestEncodeDecodeMVCCValue(t *testing.T) {
 	valHeaderFull := valHeader
 	valHeaderFull.ImportEpoch = importEpoch
 	valHeaderFull.OriginID = originID
-	valHeaderFull.OriginTimestamp = originTs
+	valHeaderFull.OriginTimestampWall = originTs.WallTime
+	valHeaderFull.OriginTimestampLogical = originTs.Logical
 
 	valHeaderWithJobIDOnly := enginepb.MVCCValueHeader{ImportEpoch: importEpoch}
 	valHeaderWithOriginIDOnly := enginepb.MVCCValueHeader{OriginID: originID}
-	valHeaderWithOriginTsOnly := enginepb.MVCCValueHeader{OriginTimestamp: originTs}
+	valHeaderWithOriginTsOnly := enginepb.MVCCValueHeader{OriginTimestampWall: originTs.WallTime, OriginTimestampLogical: originTs.Logical}
 
 	testcases := map[string]struct {
 		val MVCCValue

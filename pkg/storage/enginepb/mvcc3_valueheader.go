@@ -20,11 +20,12 @@ func (h MVCCValueHeader) IsEmpty() bool {
 
 func (h *MVCCValueHeader) pure() MVCCValueHeaderPure {
 	return MVCCValueHeaderPure{
-		LocalTimestamp:   h.LocalTimestamp,
-		OmitInRangefeeds: h.OmitInRangefeeds,
-		ImportEpoch:      h.ImportEpoch,
-		OriginID:         h.OriginID,
-		OriginTimestamp:  h.OriginTimestamp,
+		LocalTimestamp:         h.LocalTimestamp,
+		OmitInRangefeeds:       h.OmitInRangefeeds,
+		ImportEpoch:            h.ImportEpoch,
+		OriginID:               h.OriginID,
+		OriginTimestampWall:    h.OriginTimestampWall,
+		OriginTimestampLogical: h.OriginTimestampLogical,
 	}
 }
 
