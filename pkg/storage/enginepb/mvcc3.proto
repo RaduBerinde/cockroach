@@ -232,7 +232,7 @@ message MVCCValueHeaderPure {
   bool omit_in_rangefeeds = 3;
   uint32 import_epoch = 4;
   uint32 origin_id = 5  [(gogoproto.customname) = "OriginID"];
-  util.hlc.Timestamp origin_timestamp = 6 [(gogoproto.nullable) = false, (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.Timestamp"];
+  util.hlc.Timestamp origin_timestamp = 6 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.Timestamp"];
 }
 // MVCCValueHeaderCrdbTest is not to be used directly. It's generated only for use of
 // its marshaling methods by MVCCValueHeader. See the comment there.
