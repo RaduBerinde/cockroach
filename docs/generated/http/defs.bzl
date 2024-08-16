@@ -52,7 +52,7 @@ PROTOBUF_TARGETS = [
     "//pkg/util:util_proto",
     "@com_github_prometheus_client_model//io/prometheus/client:io_prometheus_client_proto",
     "@com_github_cockroachdb_errors//errorspb:errorspb_proto",
-    "@com_github_gogo_protobuf//gogoproto:gogo_proto",
+    "@com_github_cockroachdb_gogoproto//gogoproto:gogo_proto",
     "@com_google_protobuf//:any_proto",
     "@com_google_protobuf//:descriptor_proto",
     "@com_google_protobuf//:duration_proto",

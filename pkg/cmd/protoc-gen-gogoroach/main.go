@@ -14,9 +14,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
-	"github.com/gogo/protobuf/vanity"
-	"github.com/gogo/protobuf/vanity/command"
+	"github.com/cockroachdb/gogoproto/protoc-gen-gogo/descriptor"
+	"github.com/cockroachdb/gogoproto/vanity"
+	"github.com/cockroachdb/gogoproto/vanity/command"
 )
 
 // As we invoke it, the generator will sometimes prepend the cockroachdb github

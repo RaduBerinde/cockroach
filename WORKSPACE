@@ -122,7 +122,7 @@ http_archive(
 # org_golang_google_protobuf handled in DEPS.bzl.
 # com_github_golang_protobuf handled in DEPS.bzl.
 # com_github_mwitkow_go_proto_validators handled in DEPS.bzl.
-# com_github_gogo_protobuf handled in DEPS.bzl.
+# com_github_cockroachdb_gogoproto handled in DEPS.bzl.
 # org_golang_google_genproto handled in DEPS.bzl.
 
 http_archive(

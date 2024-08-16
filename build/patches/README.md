@@ -14,7 +14,7 @@ examples:
   `internal/invariants/off.go` to the `go_library` for the `invariants`
   package -- otherwise, Gazelle omits it, causing builds to fail unless you pass
   the `invariants` build tag.
-* `com_github_gogo_protobuf.patch` adds a rule, `gogo_proto`, so that we can
+* `com_github_cockroachdb_gogoproto.patch` adds a rule, `gogo_proto`, so that we can
   import `gogoproto/gogo.proto` in our own `.proto` files, while not updating
   the existing `gogoproto` rule that uses the pre-generated `.pb.go` file.
 * `com_github_grpc_ecosystem_grpc_gateway.patch` replaces some dependencies that

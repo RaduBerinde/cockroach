@@ -278,8 +278,8 @@ func dumpBuildDirectivesForRepo(repoName string) {
 	// Common directives for proto resolution, including generating with our
 	// internal compiler.
 	protoDirectives := []string{
-		"gazelle:resolve proto proto gogoproto/gogo.proto @com_github_gogo_protobuf//gogoproto:gogo_proto",
-		"gazelle:resolve proto go gogoproto/gogo.proto @com_github_gogo_protobuf//gogoproto",
+		"gazelle:resolve proto proto gogoproto/gogo.proto @com_github_cockroachdb_gogoproto//gogoproto:gogo_proto",
+		"gazelle:resolve proto go gogoproto/gogo.proto @com_github_cockroachdb_gogoproto//gogoproto",
 		"gazelle:go_proto_compilers @com_github_cockroachdb_cockroach//pkg/cmd/protoc-gen-gogoroach:protoc-gen-gogoroach_compiler",
 		"gazelle:go_grpc_compilers @com_github_cockroachdb_cockroach//pkg/cmd/protoc-gen-gogoroach:protoc-gen-gogoroach_grpc_compiler",
 	}

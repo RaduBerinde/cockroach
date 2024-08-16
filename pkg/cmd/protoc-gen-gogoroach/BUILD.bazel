@@ -7,9 +7,9 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/cmd/protoc-gen-gogoroach",
     visibility = ["//visibility:private"],
     deps = [
-        "@com_github_gogo_protobuf//protoc-gen-gogo/descriptor",
-        "@com_github_gogo_protobuf//vanity",
-        "@com_github_gogo_protobuf//vanity/command",
+        "@com_github_cockroachdb_gogoproto//protoc-gen-gogo/descriptor",
+        "@com_github_cockroachdb_gogoproto//vanity",
+        "@com_github_cockroachdb_gogoproto//vanity/command",
     ],
 )
 
@@ -41,10 +41,10 @@ go_proto_compiler(
     valid_archive = False,
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_gogo_protobuf//proto",
-        "@com_github_gogo_protobuf//protoc-gen-gogo/descriptor",
-        "@com_github_gogo_protobuf//sortkeys",
-        "@com_github_gogo_protobuf//types",
+        "@com_github_cockroachdb_gogoproto//proto",
+        "@com_github_cockroachdb_gogoproto//protoc-gen-gogo/descriptor",
+        "@com_github_cockroachdb_gogoproto//sortkeys",
+        "@com_github_cockroachdb_gogoproto//types",
     ],
 )
 
@@ -63,10 +63,10 @@ go_proto_compiler(
     valid_archive = False,
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_gogo_protobuf//proto",
-        "@com_github_gogo_protobuf//protoc-gen-gogo/descriptor",
-        "@com_github_gogo_protobuf//sortkeys",
-        "@com_github_gogo_protobuf//types",
+        "@com_github_cockroachdb_gogoproto//proto",
+        "@com_github_cockroachdb_gogoproto//protoc-gen-gogo/descriptor",
+        "@com_github_cockroachdb_gogoproto//sortkeys",
+        "@com_github_cockroachdb_gogoproto//types",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
