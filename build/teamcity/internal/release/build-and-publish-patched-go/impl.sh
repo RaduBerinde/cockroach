@@ -10,8 +10,11 @@ set -xeuo pipefail
 
 # When updating to a new Go version, update all of these variables.
 GOVERS=1.22.8
-GOLINK=https://go.dev/dl/go$GOVERS.src.tar.gz
-SRCSHASUM=df12c23ebf19dea0f4bf46a22cbeda4a3eca6f474f318390ce774974278440b8
+# This must be a commit on the cockroach-go$GOVERS branch of
+# github.com/cockroachdb/go.
+GOCOMMIT=881c7c7293f92d8d5cef477fc5395b72e1558203
+GOBRANCH="origin/cockroach-go$GOVERS"
+
 # We use this for bootstrapping (this is NOT re-published). Note the version
 # matches the version we're publishing, although it doesn't technically have to.
 GOLINUXLINK=https://go.dev/dl/go$GOVERS.linux-amd64.tar.gz
@@ -61,15 +64,17 @@ echo '94e64e0e8de05706dfd5ab2f1fee6e7f75280e35b09b5628980805d27939b418 x86_64-w6
 echo *.tar.gz | xargs -n1 tar -xzf
 rm *.tar.gz
 
-curl -fsSL $GOLINK -o golang.tar.gz
-echo "$SRCSHASUM  golang.tar.gz" | sha256sum -c -
 mkdir -p /tmp/go$GOVERS
-tar -C /tmp/go$GOVERS -xzf golang.tar.gz
-rm golang.tar.gz
+git clone https://github.com/cockroachdb/go /tmp/go$GOVERS/go
 cd /tmp/go$GOVERS/go
-# NB: we apply a patch to the Go runtime to keep track of running time on a
-# per-goroutine basis. See #82356 and #82625.
-git apply /bootstrap/diff.patch
+
+if ! git merge-base --is-ancestor "$GOCOMMIT" "$GOBRANCH"; then
+    echo "The commit $GOCOMMIT is not an ancestor of $GOBRANCH."
+    echo "Please double-check the GOCOMMIT variable."
+    exit 1
+fi
+
+git checkout $GOCOMMIT
 cd ..
 
 CONFIGS="linux_amd64 linux_arm64 darwin_amd64 darwin_arm64 windows_amd64"
@@ -120,7 +125,7 @@ for CONFIG in $CONFIGS; do
         mv go/bin/${GOOS}_$GOARCH/* go/bin
         rm -r go/bin/${GOOS}_$GOARCH
     fi
-    tar cf - go | gzip -9 > /artifacts/go$GOVERS.$GOOS-$GOARCH.tar.gz
+    tar cf - go | gzip -9 > /artifacts/cockroach-go$GOVERS-${a:0:7}.$GOOS-$GOARCH.tar.gz
     rm -rf go/bin
 done
 
