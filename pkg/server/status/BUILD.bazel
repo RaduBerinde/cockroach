@@ -11,6 +11,7 @@ go_library(
         "runtime_generic.go",
         "runtime_jemalloc.go",
         "runtime_jemalloc_darwin.go",
+        "runtime_jemalloc_log.go",
         "runtime_linux.go",
         "runtime_log.go",
     ],

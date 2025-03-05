@@ -7,19 +7,6 @@
 
 package status
 
-import (
-	"context"
-	"reflect"
-	"strings"
-	"time"
-	"unsafe"
-
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/crlib/crtime"
-	"github.com/cockroachdb/redact"
-	"github.com/dustin/go-humanize"
-)
-
 // #cgo CPPFLAGS: -DJEMALLOC_NO_DEMANGLE
 // #cgo LDFLAGS: -ljemalloc
 // #cgo dragonfly freebsd LDFLAGS: -lm
@@ -90,66 +77,32 @@ import (
 //  return je_mallctl("arena." STRINGIFY(MALLCTL_ARENAS_ALL) ".purge", NULL, 0, NULL, 0);
 // }
 //
-//  typedef struct {
-//     bool seen_per_arenas_stats;
-//     char* buffer;
-//     int buffer_capacity;
-//     int buffer_size;
-//     bool outputted_all_stats;
-// } StatsContext;
-// static void truncate_before_arenas_cb(void *opaque, const char *msg) {
-//     StatsContext *ctx = (StatsContext *)opaque;
-//     if (ctx->seen_per_arenas_stats) {
-//         return;
-//     }
-//     const char *arena_pos = strstr(msg, "arenas[");
-//     if (arena_pos != NULL) {
-//         size_t pre_arenas_length = (size_t)(arena_pos - msg);
-//         size_t remaining_space = ctx->buffer_capacity - ctx->buffer_size - 1;
-//         size_t copy_length = (remaining_space > pre_arenas_length) ? pre_arenas_length : remaining_space;
-//         strncat(ctx->buffer, msg, copy_length);
-//         ctx->buffer_size += copy_length;
-//         ctx->seen_per_arenas_stats = true;
-//     } else {
-//         size_t msg_length = strlen(msg);
-//         size_t remaining_space = ctx->buffer_capacity - ctx->buffer_size - 1;
-//         int copy_length = (remaining_space > msg_length) ? msg_length : remaining_space;
-//         ctx->buffer_size += copy_length;
-//         strncat(ctx->buffer, msg, copy_length);
-//     }
-// }
-// void jemalloc_stats_print_abbreviated(char* buffer, int buffer_capacity) {
-//     StatsContext ctx = {.seen_per_arenas_stats = false,
-//	                       .buffer_capacity=buffer_capacity,
-//	                       .buffer=buffer,
-//	                       .buffer_size=0};
-//     je_malloc_stats_print(truncate_before_arenas_cb, &ctx, NULL);
+// extern void goPrintJemallocLog(uintptr_t handle, char *msg);
+//
+// static void cb(void *opaque, const char *msg) {
+//     goPrintJemallocLog((uintptr_t)opaque, (char*)msg);
 // }
 //
-// static void verbose_cb(void *opaque, const char *msg) {
-//     StatsContext *ctx = (StatsContext *)opaque;
-//     size_t msg_length = strlen(msg);
-//     size_t remaining_space = ctx->buffer_capacity - ctx->buffer_size - 1;
-//     if (remaining_space < msg_length) {
-//         ctx->outputted_all_stats = false;
-//         return;
+// void jemalloc_stats_print(uintptr_t ctx, bool abbreviated) {
+//     char *opts = NULL;
+//     if (abbreviated) {
+//       opts = "a";
 //     }
-//     ctx->buffer_size += msg_length;
-//     strncat(ctx->buffer, msg, msg_length);
-// }
-//
-// bool jemalloc_stats_print_verbose(char* buffer, int buffer_capacity) {
-//     StatsContext ctx = {.buffer=buffer,
-//	                       .buffer_capacity=buffer_capacity,
-//	                       .buffer_size=0,
-//	                       .outputted_all_stats=true};
-//     je_malloc_stats_print(verbose_cb, &ctx, NULL);
-//     return ctx.outputted_all_stats;
+//     je_malloc_stats_print(cb, (void *)ctx, opts);
 // }
 import "C"
+import (
+	"context"
+	"reflect"
+	"runtime/cgo"
+	"strings"
+	"time"
 
-const jemallocStatsAbbreviatedBufferCapacity = 8000
-const jemallocStatsVerboseBufferCapacity = 64000
+	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/cockroachdb/crlib/crtime"
+	"github.com/cockroachdb/redact"
+	"github.com/dustin/go-humanize"
+)
 
 func init() {
 	if getCgoMemStats != nil {
@@ -180,24 +133,14 @@ func getJemallocStats(ctx context.Context) (cgoAlloc uint, cgoTotal uint, _ erro
 		log.Infof(ctx, "jemalloc stats: %s", redact.Safe(strings.Join(stats, " ")))
 	}
 
+	log.Infof(ctx, "\n\n\nFOOOOO\n")
+	logJemallocStats(ctx, false)
+	log.Infof(ctx, "\n\n\nBARRRRR\n")
+	logJemallocStats(ctx, true)
+
 	if log.V(1) {
-		if log.V(3) {
-			// Detailed jemalloc stats (very verbose, includes per-arena stats).
-			buffer := [jemallocStatsVerboseBufferCapacity]byte{}
-			outputtedAllStats := C.jemalloc_stats_print_verbose((*C.char)(unsafe.Pointer(&buffer[0])), C.int(jemallocStatsVerboseBufferCapacity))
-			statsStr := C.GoString((*C.char)(unsafe.Pointer(&buffer[0])))
-			if !outputtedAllStats {
-				log.Infof(ctx, "jemalloc stats (verbose):\n%s...", statsStr)
-			} else {
-				log.Infof(ctx, "jemalloc stats (verbose):\n%s", statsStr)
-			}
-		} else {
-			// Abbreviated jemalloc stats (does not include per-arena stats).
-			buffer := [jemallocStatsAbbreviatedBufferCapacity]byte{}
-			C.jemalloc_stats_print_abbreviated((*C.char)(unsafe.Pointer(&buffer[0])), C.int(jemallocStatsAbbreviatedBufferCapacity))
-			statsStr := C.GoString((*C.char)(unsafe.Pointer(&buffer[0])))
-			log.Infof(ctx, "jemalloc stats (abbreviated):\n%s", statsStr)
-		}
+		abbreviated := !log.V(3)
+		logJemallocStats(ctx, abbreviated)
 	}
 	// js.Allocated corresponds to stats.allocated, which is effectively the sum
 	// of outstanding allocations times the size class; thus it includes internal
@@ -259,15 +202,28 @@ func jemallocMaybePurge(
 		return
 	}
 
-	buffer := [jemallocStatsAbbreviatedBufferCapacity]byte{}
-	C.jemalloc_stats_print_abbreviated((*C.char)(unsafe.Pointer(&buffer[0])), C.int(jemallocStatsAbbreviatedBufferCapacity))
-	statsStr := C.GoString((*C.char)(unsafe.Pointer(&buffer[0])))
-	log.Infof(ctx, "jemalloc stats (abbreviated):\n%s", statsStr)
+	logJemallocStats(ctx, true /* abbreviated */)
 
 	res, err := C.jemalloc_purge()
 	if err != nil || res != 0 {
 		log.Warningf(ctx, "jemalloc purging failed: %v (res=%d)", err, int(res))
 	} else {
 		log.Infof(ctx, "jemalloc arenas purged (took %s)", thisPurge.Elapsed())
+	}
+}
+
+func logJemallocStats(ctx context.Context, abbreviated bool) {
+	var logs []byte
+	// Detailed jemalloc stats (very verbose, includes per-arena stats).
+	msgFn := func(s string) {
+		logs = append(logs, s...)
+	}
+	handle := cgo.NewHandle(msgFn)
+	defer handle.Delete()
+	C.jemalloc_stats_print(C.uintptr_t(handle), C.bool(abbreviated))
+	if abbreviated {
+		log.Infof(ctx, "jemalloc stats (abbreviated):\n%s", logs)
+	} else {
+		log.Infof(ctx, "jemalloc stats:\n%s", logs)
 	}
 }
