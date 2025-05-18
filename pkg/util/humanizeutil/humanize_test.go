@@ -7,6 +7,7 @@ package humanizeutil_test
 
 import (
 	"math"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
@@ -95,5 +96,49 @@ func TestBytes(t *testing.T) {
 			t.Errorf("%d: ParseBytes(%s) caused an incorrect error actual:%s, expected:%s", i, testCase.value, err,
 				testCase.expected)
 		}
+	}
+}
+
+func TestIBytesExact(t *testing.T) {
+	for _, tc := range []struct {
+		value    int64
+		expected string
+	}{
+		{value: 0, expected: "0 B"},
+		{value: 1, expected: "1 B"},
+		{value: -1, expected: "-1 B"},
+		{value: 1023, expected: "1023 B"},
+		{value: 1024, expected: "1 KiB"},
+		{value: -1024, expected: "-1 KiB"},
+		{value: 1025, expected: "1025 B"},
+		{value: 2 << 20, expected: "2 MiB"},
+		{value: 12345 << 20, expected: "12345 MiB"},
+		{value: 512 << 30, expected: "512 GiB"},
+		{value: 100 << 40, expected: "100 TiB"},
+		{value: 123 << 50, expected: "123 PiB"},
+		{value: 2 << 60, expected: "2 EiB"},
+	} {
+		if actual := string(humanizeutil.IBytesExact(tc.value)); actual != tc.expected {
+			t.Errorf("IBytesExact(%d) = %q, expected %q", tc.value, actual, tc.expected)
+		}
+	}
+	checkRoundtrip := func(v int64) {
+		humanized := humanizeutil.IBytesExact(v)
+		after, err := humanizeutil.ParseBytes(string(humanized))
+		if err != nil || after != v {
+			t.Helper()
+			t.Fatalf("IBytesExact(%d)=%q does not roundtrip (after: %d, err: %v)", v, humanized, after, err)
+		}
+	}
+	checkRoundtrip(0)
+	for it := 0; it < 1000; it++ {
+		// ParseBytes uses a float; very large values are not parsed exactly.
+		x := rand.Int64N(1 << 50)
+		checkRoundtrip(x)
+		checkRoundtrip(-x)
+		// Generate numbers that are divisible by powers of 2.
+		x = int64(rand.IntN(1024*1024)) << rand.IntN(40)
+		checkRoundtrip(x)
+		checkRoundtrip(-x)
 	}
 }

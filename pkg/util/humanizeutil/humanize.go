@@ -26,6 +26,25 @@ func IBytes(value int64) redact.SafeString {
 	return redact.SafeString(humanize.IBytes(uint64(value)))
 }
 
+// IBytesExact is similar to IBytes, but the result is exact and can be parsed
+// back into the original value.
+//
+// An example when this should be used instead of IBytes is when we are
+// marshaling a configuration value.
+func IBytesExact(value int64) redact.SafeString {
+	if value < 0 {
+		return "-" + IBytesExact(-value)
+	}
+	sizes := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"}
+	i := 0
+	if value != 0 {
+		for ; i < len(sizes)-1 && value%1024 == 0; i++ {
+			value /= 1024
+		}
+	}
+	return redact.SafeString(fmt.Sprintf("%d %s", value, sizes[i]))
+}
+
 // ParseBytes is an int64 version of go-humanize's ParseBytes.
 func ParseBytes(s string) (int64, error) {
 	if len(s) == 0 {
