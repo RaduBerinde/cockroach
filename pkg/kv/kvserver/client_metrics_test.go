@@ -254,7 +254,7 @@ func TestStoreMetrics(t *testing.T) {
 			StickyVFSID: strconv.FormatInt(int64(i), 10),
 			// Specify a size to trigger the BlockCache in Pebble.
 			Size: storageconfig.SizeSpec{
-				Capacity: 512 << 20, /* 512 MiB */
+				Bytes: 512 << 20, /* 512 MiB */
 			},
 		}
 		stickyServerArgs[i] = base.TestServerArgs{

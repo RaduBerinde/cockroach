@@ -44,7 +44,7 @@ func TestBallastSizeBytes(t *testing.T) {
 			want:       256 << 20, // 256 MiB
 		},
 		{
-			StoreSpec:  base.StoreSpec{BallastSize: &storageconfig.SizeSpec{Capacity: 1 << 30 /* 1 GiB */}},
+			StoreSpec:  base.StoreSpec{BallastSize: &storageconfig.SizeSpec{Bytes: 1 << 30 /* 1 GiB */}},
 			totalBytes: 25 << 30, // 25 GiB
 			want:       1 << 30,  // 1 GiB
 		},
@@ -125,7 +125,7 @@ func TestIsDiskFull(t *testing.T) {
 	})
 	t.Run("truncating ballast frees enough space", func(t *testing.T) {
 		spec := base.StoreSpec{
-			BallastSize: &storageconfig.SizeSpec{Capacity: 1024},
+			BallastSize: &storageconfig.SizeSpec{Bytes: 1024},
 		}
 		// Provide two disk usages. The second one will be returned
 		// post-truncation.
@@ -144,7 +144,7 @@ func TestIsDiskFull(t *testing.T) {
 	})
 	t.Run("configured ballast, plenty of space", func(t *testing.T) {
 		spec := base.StoreSpec{
-			BallastSize: &storageconfig.SizeSpec{Capacity: 5 << 30 /* 5 GiB */},
+			BallastSize: &storageconfig.SizeSpec{Bytes: 5 << 30 /* 5 GiB */},
 		}
 		fs, cleanup := setup(t, &spec, 0 /* ballastSize */, vfs.DiskUsage{
 			AvailBytes: 25 << 30,  // 25 GiB

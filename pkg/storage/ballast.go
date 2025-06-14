@@ -84,7 +84,7 @@ func IsDiskFull(fs vfs.FS, spec base.StoreSpec) (bool, error) {
 // smaller.
 func BallastSizeBytes(spec base.StoreSpec, diskUsage vfs.DiskUsage) int64 {
 	if spec.BallastSize != nil {
-		v := spec.BallastSize.Capacity
+		v := spec.BallastSize.Bytes
 		if spec.BallastSize.Percent != 0 {
 			v = int64(float64(diskUsage.TotalBytes) * spec.BallastSize.Percent / 100)
 		}
@@ -105,7 +105,7 @@ func BallastSizeBytes(spec base.StoreSpec, diskUsage vfs.DiskUsage) int64 {
 // capacity), that size is used. A zero value for cacheSize results in no
 // secondary cache.
 func SecondaryCacheBytes(cacheSize storageconfig.SizeSpec, diskUsage vfs.DiskUsage) int64 {
-	v := cacheSize.Capacity
+	v := cacheSize.Bytes
 	if cacheSize.Percent != 0 {
 		v = int64(float64(diskUsage.TotalBytes) * cacheSize.Percent / 100)
 	}

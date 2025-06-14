@@ -597,7 +597,7 @@ var (
 	DefaultTestStoreSpec = StoreSpec{
 		InMemory: true,
 		Size: storageconfig.SizeSpec{
-			Capacity: 512 << 20,
+			Bytes: 512 << 20,
 		},
 	}
 )
